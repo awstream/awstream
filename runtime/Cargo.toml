@@ -1,0 +1,19 @@
+[package]
+name = "awstream"
+version = "0.1.0"
+authors = ["Ben Zhang <benzh@cs.berkeley.edu>"]
+
+[dependencies]
+bincode = "0.8"
+bytes = "0.4"
+log = "*"
+byteorder = "1"
+chrono = { version = "0.4", features = ["serde"] }
+error-chain = "0.11.0-rc.2"
+futures = "0.1"
+serde = "1.0"
+serde_derive = "1.0"
+tokio-core = "0.1"
+tokio-io = "0.1"
+tokio-proto = "0.1"
+tokio-service = "0.1"
