@@ -22,6 +22,8 @@ use tokio_core::net::{TcpListener, TcpStream};
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
 
+use tokio_io::codec::Encoder;
+
 /// Run the server. The server will simply listen for new connections, receive
 /// strings, and write them to STDOUT.
 ///
@@ -63,20 +65,23 @@ pub fn main() {
     let handle = core.handle();
     let remote_addr = "127.0.0.1:14566".parse().unwrap();
 
-    let work = TcpStream::connect(&remote_addr, &handle).and_then(|socket| {
-        // Once the socket has been established, use the `framed` helper to
-        // create a transport.
-        let transport = socket.framed(AsCodec::default());
+    let work = TcpStream::connect(&remote_addr, &handle);
+    let tcp = core.run(work).unwrap();
 
-        // We're just going to send a few dummy objects
-        let lines_to_send: Vec<Result<AsDatum, io::Error>> =
-            vec![Ok(AsDatum::new(String::from("Hello").into_bytes())),
-                 Ok(AsDatum::new(String::from("world").into_bytes()))];
+    let transport = tcp.framed(AsCodec::default());
+    // We're just going to send a few dummy objects
+    let lines_to_send: Vec<Result<AsDatum, io::Error>> =
+        vec![Ok(AsDatum::new(String::from("Hello").into_bytes())),
+             Ok(AsDatum::new(String::from("world").into_bytes()))];
 
-        // Send all the messages to the remote.
-        transport.send_all(stream::iter(lines_to_send))
-    });
 
+    let d = AsDatum::new(String::from("Hello").into_bytes());
+    let mut buf = bytes::BytesMut::new();
+    let mut codec = AsCodec::default();
+    codec.encode(d, &mut buf).unwrap();
+
+    // Send all the messages to the remote.
+    let work = transport.send_all(stream::iter(lines_to_send));
     core.run(work).unwrap();
 
     // Wait a bit to make sure that the server had time to receive the lines and

@@ -55,11 +55,20 @@ pub struct AsCodec {
 impl AsDatum {
     /// Creates a new `AsDatum` object.
     pub fn new(data: Vec<u8>) -> AsDatum {
-        AsDatum {
+        let mut d = AsDatum {
             level: None,
             ts: None,
             mem: data,
-        }
+            len: 0,
+        };
+        let len = bincode::serialized_size(&d);
+        d.len = len;
+        d
+    }
+
+    /// Return the serialized length of this data structure
+    pub fn len(&self) -> usize {
+        self.len as usize
     }
 }
 
@@ -77,6 +86,12 @@ pub struct AsDatum {
     /// to facilitate zero-copy network programming. Underlying the hood, it
     /// uses reference counting for safe free.
     mem: Vec<u8>,
+
+    /// The size of serialized version of this data structure (except this
+    /// field). We use this field as a cache to avoid repeated call for
+    /// serialization.
+    #[serde(skip)]
+    len: u64,
 }
 
 impl Decoder for AsCodec {
@@ -108,11 +123,12 @@ impl Decoder for AsCodec {
                 CodecState::Payload { len } => {
                     let payload = buf.split_to(len as usize);
                     self.state = CodecState::Len;
-                    let datum =
+                    let mut datum: AsDatum =
                         bincode::deserialize_from(&mut Cursor::new(payload), bincode::Infinite)
                             .map_err(|deserialize_err| {
                                 io::Error::new(io::ErrorKind::Other, deserialize_err)
                             })?;
+                    datum.len = len;
                     return Ok(Some(datum));
                 }
             }
@@ -125,7 +141,7 @@ impl Encoder for AsCodec {
     type Error = io::Error;
 
     fn encode(&mut self, d: AsDatum, buf: &mut BytesMut) -> Result<(), io::Error> {
-        let payload_size = bincode::serialized_size(&d);
+        let payload_size = d.len;
         let message_size = mem::size_of::<u64>() + payload_size as usize;
         buf.reserve(message_size);
 
