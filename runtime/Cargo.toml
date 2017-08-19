@@ -5,12 +5,12 @@ authors = ["Ben Zhang <benzh@cs.berkeley.edu>"]
 
 [dependencies]
 bincode = "0.8"
-bytes = "0.4"
-log = "*"
 byteorder = "1"
+bytes = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
-error-chain = "0.11.0-rc.2"
+csv = "1.0.0-beta.4"
 futures = "0.1"
+log = "*"
 serde = "1.0"
 serde_derive = "1.0"
 tokio-core = "0.1"

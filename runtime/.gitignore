@@ -113,3 +113,4 @@ version.texi
 .tramp_history
 
 .Rhistory
+Cargo.lock
