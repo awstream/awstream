@@ -1,25 +1,33 @@
 language: rust
+
 rust:
-- stable
-- beta
-- nightly
+  - stable
+  - beta
+  - nightly
+
 sudo: false
+
 before_script:
-- pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
-- cd runtime
+  - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
+  - cd runtime
+
 script:
-- cargo build
-- cargo test
-- cargo doc --no-deps
-- if [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then cargo bench ; fi
+  - cargo build
+  - cargo test
+  - cargo doc --no-deps
+  - if [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then cargo bench ; fi
+
 after_success:
-- travis-cargo --only nightly doc-upload
+  - travis-cargo --only nightly doc-upload
+
 notifications:
   email:
     on_success: never
+
 os:
-- linux
-- osx
+  - linux
+  - osx
+
 env:
   global:
-    secure: DijQCyZ38Wc4MeZlNz/BFstZF7cIhSRDvk/gnAB6G4UAC5XdSGfaXGCckTwjOhvtxonZ4FW9M40VHVmpAW7aedy3qYdPLgNNN0aATOaACkrZRXXQCsjsQ2iolh2vU6OIMutQWfkwz33ZMukqHsojPoG/fiDpClyeUyJys6pXhBHTmVgPN1DdNh4vm2ew9FhwX9jJryZsRZmC+4Iposxw57ce5gTR7QhgBWjHqQjS9zE11rKW7FTISbooGtPXB5OBHyUInhU4CIyQBIdcdwQDUOuhf6hBmOo6hEaZfIeacX8+X17oZwgGDFCOvQLHafXckvL2whWFnSjcAJE+rARXei7DmcWNaWLHOBjdp2qF1fDtyAyPQwR87TKAi+jKCUDazbOTV6kLYbcgtpCSKK2DwoS82tr7JVyRzVmU50Dwvkl6BuCdmX5KQNBTjZCN/9q2Depec8kypYm/KyHcFB6LJuI/XeY4CA66m9w9z9sa6N8IIwRMM2Y7WMOgPU8ZxOajGsFHzRQNN5XuyFk+WBzN1IdRxd22D2GYm7zNlv92sxr11y1YT2DlALUB5DiS2m6XufqXtqiIKyVXL/6j78DNNjKat5T4x82eL/hWHyNQimBI+S+s8NSTP0D4LChuRELX87CJqYhWZvdMvNr1Gc07R93pjR4sOQw+GkNAoPTqwG0=
+    - secure: DijQCyZ38Wc4MeZlNz/BFstZF7cIhSRDvk/gnAB6G4UAC5XdSGfaXGCckTwjOhvtxonZ4FW9M40VHVmpAW7aedy3qYdPLgNNN0aATOaACkrZRXXQCsjsQ2iolh2vU6OIMutQWfkwz33ZMukqHsojPoG/fiDpClyeUyJys6pXhBHTmVgPN1DdNh4vm2ew9FhwX9jJryZsRZmC+4Iposxw57ce5gTR7QhgBWjHqQjS9zE11rKW7FTISbooGtPXB5OBHyUInhU4CIyQBIdcdwQDUOuhf6hBmOo6hEaZfIeacX8+X17oZwgGDFCOvQLHafXckvL2whWFnSjcAJE+rARXei7DmcWNaWLHOBjdp2qF1fDtyAyPQwR87TKAi+jKCUDazbOTV6kLYbcgtpCSKK2DwoS82tr7JVyRzVmU50Dwvkl6BuCdmX5KQNBTjZCN/9q2Depec8kypYm/KyHcFB6LJuI/XeY4CA66m9w9z9sa6N8IIwRMM2Y7WMOgPU8ZxOajGsFHzRQNN5XuyFk+WBzN1IdRxd22D2GYm7zNlv92sxr11y1YT2DlALUB5DiS2m6XufqXtqiIKyVXL/6j78DNNjKat5T4x82eL/hWHyNQimBI+S+s8NSTP0D4LChuRELX87CJqYhWZvdMvNr1Gc07R93pjR4sOQw+GkNAoPTqwG0=
