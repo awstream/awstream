@@ -17,3 +17,8 @@ tokio-core = "0.1"
 tokio-io = "0.1"
 tokio-proto = "0.1"
 tokio-service = "0.1"
+
+[[bin]]
+doc = false
+name = "main"
+path = "src/main.rs"
