@@ -23,6 +23,8 @@ extern crate tokio_core;
 extern crate tokio_io;
 
 mod profile;
+mod adaptation_controller;
+mod client;
 // mod source;
 // mod socket;
 // mod receiver;
