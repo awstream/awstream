@@ -12,8 +12,7 @@ use futures::{self, Stream, Future, Sink};
 use super::AsDatum;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
-use tokio_timer::Timer;
-use tokio_io::AsyncRead;
+use tokio_timer as timer;
 
 enum Event {
     MonitorTimer,
@@ -23,14 +22,13 @@ enum Event {
 
 /// Run client
 pub fn run() {
-    use std::cell::RefCell;
-
     // Setting up the reactor core
     let mut core = Core::new().unwrap();
 
     // Creates the TCP connection and a transport
     let handle = core.handle();
-    let remote_addr = "127.0.0.1:14566".parse().unwrap();
+    //
+    let remote_addr = "128.32.171.191:14566".parse().unwrap();
     let work = TcpStream::connect(&remote_addr, &handle);
     let tcp = core.run(work).unwrap();
     let socket = socket::Socket::new(tcp);
@@ -38,8 +36,10 @@ pub fn run() {
     let (tx, rx) = futures::sync::mpsc::unbounded();
 
     // monitor is a timer task
-    let monitor = Timer::default()
-        .interval(::std::time::Duration::from_millis(500))
+    let monitor = timer::wheel()
+        .tick_duration(::std::time::Duration::from_millis(50))
+        .build()
+        .interval(::std::time::Duration::from_millis(100))
         .map(|_| {
             // We perform monitor tasks, including reading the past bandwidth
             // and calling out to congestion controller if necessary.
@@ -48,12 +48,18 @@ pub fn run() {
         })
         .map_err(|_| ());
 
-    let source = Timer::default()
+    let mut counter = 0;
+    let source = timer::Timer::default()
         .interval(::std::time::Duration::from_millis(400))
         .map_err(|_| ())
-        .and_then(|_| {
+        .and_then(move |_| {
             // source is a timer task
-            let data_to_send = AsDatum::new(vec![0; 1_024_0]);
+            println!("{}", counter);
+            counter += 1;
+            let data_to_send = AsDatum::new(vec![0; 1_024_000]);
+            if counter == 0 {
+                tx.clone().close().unwrap();
+            }
             tx.clone().send(data_to_send).map_err(|_| ())
         })
         .map(|_| Event::SourceDatum)

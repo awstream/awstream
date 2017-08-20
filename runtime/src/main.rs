@@ -59,7 +59,7 @@ pub fn main() {
         let t = chrono::Utc::now();
         format!(
             "{} {}:{}: {}",
-            t.format("%Y-%m-%d %H:%M:%S.%f").to_string(),
+            t.format("%Y-%m-%d %H:%M:%S%.3f").to_string(),
             record.level(),
             record.location().module_path(),
             record.args()

@@ -7,7 +7,6 @@
 #![recursion_limit = "1024"]
 #![deny(missing_docs)]
 #![allow(dead_code)]
-#![allow(unused_imports)]
 
 extern crate bincode;
 extern crate byteorder;
