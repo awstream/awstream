@@ -21,10 +21,11 @@ extern crate serde;
 extern crate serde_derive;
 extern crate tokio_core;
 extern crate tokio_io;
+extern crate tokio_timer;
 
 mod profile;
 mod adaptation_controller;
-mod client;
+pub mod client;
 // mod source;
 // mod socket;
 // mod receiver;
@@ -78,7 +79,7 @@ impl AsDatum {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 /// `AsDatum` is the core data object for streaming over the network.
 pub struct AsDatum {
     /// The degradation level associated with this data. Optional, and when set,
@@ -165,6 +166,16 @@ impl Encoder for AsCodec {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     #[test]
-    fn it_works() {}
+    fn encode_decode_works() {
+        let d = AsDatum::new(String::from("Hello").into_bytes());
+        let expected = d.clone();
+        let mut buf = bytes::BytesMut::new();
+        let mut codec = AsCodec::default();
+        codec.encode(d, &mut buf).unwrap();
+
+        let decoded = codec.decode(&mut buf);
+        assert_eq!(decoded.unwrap().unwrap(), expected);
+    }
 }
