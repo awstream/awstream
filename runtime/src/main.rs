@@ -12,11 +12,14 @@ extern crate futures;
 extern crate tokio_io;
 extern crate tokio_core;
 extern crate bytes;
+extern crate env_logger;
+extern crate chrono;
+#[macro_use]
+extern crate log;
 
 use awstream::*;
-
 use futures::{Future, Stream};
-use std::{str, thread};
+use std::{env, str, thread};
 use std::time::Duration;
 use tokio_core::reactor::Core;
 use tokio_core::net::TcpListener;
@@ -38,7 +41,7 @@ pub fn server() {
         let transport = socket.framed(AsCodec::default());
 
         let process_connection = transport.for_each(|line| {
-            println!("GOT: {:?}", line);
+            trace!("GOT: {:?}", line);
             Ok(())
         });
 
@@ -52,6 +55,25 @@ pub fn server() {
 }
 
 pub fn main() {
+    let format = |record: &log::LogRecord| {
+        let t = chrono::Utc::now();
+        format!(
+            "{} {}:{}: {}",
+            t.format("%Y-%m-%d %H:%M:%S.%f").to_string(),
+            record.level(),
+            record.location().module_path(),
+            record.args()
+        )
+    };
+
+    let mut builder = env_logger::LogBuilder::new();
+    builder.format(format);
+    if env::var("RUST_LOG").is_ok() {
+        builder.parse(&env::var("RUST_LOG").unwrap());
+    }
+
+    builder.init().unwrap();
+
     // Run the server in a dedicated thread
     thread::spawn(|| server());
 
@@ -60,8 +82,4 @@ pub fn main() {
 
     // Client runs
     client::run();
-
-    // Wait a bit to make sure that the server had time to receive the lines and
-    // print them to STDOUT
-    thread::sleep(Duration::from_millis(1000));
 }

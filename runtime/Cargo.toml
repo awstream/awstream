@@ -18,6 +18,7 @@ tokio-io = "0.1"
 tokio-proto = "0.1"
 tokio-service = "0.1"
 tokio-timer = "0.1"
+env_logger = "0.3"
 
 [[bin]]
 doc = false

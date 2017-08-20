@@ -7,15 +7,24 @@
 //!  * `Socket` finishes sending the previous item
 //!  * `AC` timeous and returns a congestion status
 
-use futures::{Future, Stream, Sink};
-use super::{AsCodec, AsDatum};
+use super::socket;
+use futures::{self, Stream, Future, Sink};
+use super::AsDatum;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
-use tokio_io::AsyncRead;
 use tokio_timer::Timer;
+use tokio_io::AsyncRead;
+
+enum Event {
+    MonitorTimer,
+    Socket,
+    SourceDatum,
+}
 
 /// Run client
 pub fn run() {
+    use std::cell::RefCell;
+
     // Setting up the reactor core
     let mut core = Core::new().unwrap();
 
@@ -24,23 +33,38 @@ pub fn run() {
     let remote_addr = "127.0.0.1:14566".parse().unwrap();
     let work = TcpStream::connect(&remote_addr, &handle);
     let tcp = core.run(work).unwrap();
-    let transport = tcp.framed(AsCodec::default());
+    let socket = socket::Socket::new(tcp);
 
-    // We're just going to send a few dummy objects
-    let data_send = AsDatum::new(String::from("Hello").into_bytes());
-
-    // Test socket by send an data item
-    let socket = transport.send(data_send);
+    let (tx, rx) = futures::sync::mpsc::unbounded();
 
     // monitor is a timer task
     let monitor = Timer::default()
         .interval(::std::time::Duration::from_millis(500))
-        .for_each(|_| {
-            println!("timer fired");
-            Ok(())
+        .map(|_| {
+            // We perform monitor tasks, including reading the past bandwidth
+            // and calling out to congestion controller if necessary.
+            info!("timer fired");
+            Event::MonitorTimer
         })
         .map_err(|_| ());
 
-    core.run(socket).unwrap();
-    core.run(monitor).unwrap();
+    let source = Timer::default()
+        .interval(::std::time::Duration::from_millis(400))
+        .map_err(|_| ())
+        .and_then(|_| {
+            // source is a timer task
+            let data_to_send = AsDatum::new(vec![0; 1_024_0]);
+            tx.clone().send(data_to_send).map_err(|_| ())
+        })
+        .map(|_| Event::SourceDatum)
+        .map_err(|_| ());
+
+    // We spawn a worker to handle all socket communication
+    let handle = core.handle();
+    let work = socket.send_all(rx).map(|_| ());
+    handle.spawn(work);
+
+    // Run the main loop: monitoring and source generating
+    let all = monitor.select(source).for_each(|_| Ok(()));
+    core.run(all).unwrap();
 }

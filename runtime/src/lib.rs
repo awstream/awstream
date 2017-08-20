@@ -7,6 +7,7 @@
 #![recursion_limit = "1024"]
 #![deny(missing_docs)]
 #![allow(dead_code)]
+#![allow(unused_imports)]
 
 extern crate bincode;
 extern crate byteorder;
@@ -26,8 +27,8 @@ extern crate tokio_timer;
 mod profile;
 mod adaptation_controller;
 pub mod client;
+mod socket;
 // mod source;
-// mod socket;
 // mod receiver;
 // mod analytics;
 // mod online;
@@ -54,6 +55,7 @@ impl Default for AsCodec {
     }
 }
 
+#[derive(Debug)]
 /// A wrapping codec to use Tokio.
 pub struct AsCodec {
     state: CodecState,
@@ -76,6 +78,19 @@ impl AsDatum {
     /// Return the serialized length of this data structure
     pub fn len(&self) -> usize {
         self.len as usize
+    }
+}
+
+impl ::std::fmt::Display for AsDatum {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(
+            f,
+            "level: {:?}, ts: {:?}, mem (with size {}), len: {}",
+            self.level,
+            self.ts,
+            self.mem.len(),
+            self.len
+        )
     }
 }
 
