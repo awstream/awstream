@@ -17,12 +17,16 @@ pub struct Socket {
 }
 
 impl Socket {
-    pub fn new(tcp: TcpStream, bytes_counter: Arc<AtomicUsize>) -> Socket {
-        Socket {
-            inner: tcp.framed(AsCodec::default()),
-            bytes: bytes_counter,
-            last_item_size: 0,
-        }
+    pub fn new(tcp: TcpStream) -> (Socket, Arc<AtomicUsize>) {
+        let counter = Arc::new(AtomicUsize::new(0));
+        (
+            Socket {
+                inner: tcp.framed(AsCodec::default()),
+                bytes: counter.clone(),
+                last_item_size: 0,
+            },
+            counter,
+        )
     }
 }
 

@@ -57,7 +57,7 @@ impl Stream for Monitor {
                 self.queued += produced - consumed;
                 self.rate.add(consumed as f64);
 
-                info!("consumed {}, rate: {}", consumed, self.rate.mean().0);
+                info!("rate: {:.3}", self.rate.mean().0);
                 if self.queued > 0 {
                     let rate = self.rate.mean().0;
                     let latency = self.queued as f64 / rate;
