@@ -1,20 +1,28 @@
 //! Socket implements `Sink` trait that can keep track of the delivered bytes
 //! for bandwidth estimation.
 
-use futures::{Async, AsyncSink, Sink, StartSend, Poll};
+use super::{AsCodec, AsDatum};
+use futures::{Async, AsyncSink, Poll, Sink, StartSend};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio_core::net::TcpStream;
-use tokio_io::codec::Framed;
 use tokio_io::AsyncRead;
-use super::{AsDatum, AsCodec};
+use tokio_io::codec::Framed;
 
 #[derive(Debug)]
 pub struct Socket {
     inner: Framed<TcpStream, AsCodec>,
+    bytes: Arc<AtomicUsize>,
+    last_item_size: usize,
 }
 
 impl Socket {
-    pub fn new(tcp: TcpStream) -> Socket {
-        Socket { inner: tcp.framed(AsCodec::default()) }
+    pub fn new(tcp: TcpStream, bytes_counter: Arc<AtomicUsize>) -> Socket {
+        Socket {
+            inner: tcp.framed(AsCodec::default()),
+            bytes: bytes_counter,
+            last_item_size: 0,
+        }
     }
 }
 
@@ -23,10 +31,14 @@ impl Sink for Socket {
     type SinkError = ();
 
     fn start_send(&mut self, item: AsDatum) -> StartSend<AsDatum, Self::SinkError> {
-        let len = item.len();
+        self.last_item_size = item.len();
         match self.inner.start_send(item) {
             Ok(AsyncSink::Ready) => {
-                info!("start sending item {}", len);
+                info!(
+                    "start sending new item, add {} to the counter",
+                    self.last_item_size
+                );
+                self.bytes.fetch_add(self.last_item_size, Ordering::SeqCst);
                 Ok(AsyncSink::Ready)
             }
             Ok(AsyncSink::NotReady(t)) => {

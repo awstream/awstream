@@ -8,6 +8,7 @@
 #![deny(missing_docs)]
 #![allow(dead_code)]
 
+extern crate average;
 extern crate bincode;
 extern crate byteorder;
 extern crate bytes;
@@ -24,16 +25,15 @@ extern crate tokio_io;
 extern crate tokio_timer;
 
 mod profile;
-mod adaptation_controller;
+mod adaptation;
+mod controller;
 pub mod client;
 mod socket;
+mod utils;
 // mod source;
 // mod receiver;
 // mod analytics;
 // mod online;
-// mod controller;
-
-// use bytes::BufMut;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use bytes::{BufMut, BytesMut};

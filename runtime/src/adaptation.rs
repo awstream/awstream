@@ -1,8 +1,10 @@
-//! Adapatation controller implements the algorthm described as in Figure 6.
+//! Adapatation algorithm implementation (described as in Figure 6).
 
+/// Signal
 #[derive(Debug, Clone, Copy)]
 pub enum Signal {
-    QueueCongest,
+    MonitorTimer,
+    QueueCongest(f64),
     ProbeDone,
     ConfigMax,
     QueueEmpty,
@@ -28,13 +30,13 @@ enum State {
     Probe,
 }
 
-pub struct AdaptationController {
+pub struct Adaptation {
     state: State,
 }
 
-impl AdaptationController {
-    pub fn new() -> AdaptationController {
-        AdaptationController { state: State::Startup }
+impl Adaptation {
+    pub fn new() -> Adaptation {
+        Adaptation { state: State::Startup }
     }
 
     pub fn transit(&mut self, signal: Signal) -> Action {
@@ -49,12 +51,12 @@ impl AdaptationController {
                 self.state = State::Steady;
                 Action::NoOp
             }
-            (State::Startup, Signal::QueueCongest) => {
+            (State::Startup, Signal::QueueCongest(_latency)) => {
                 // transition 3
                 self.state = State::Degrade;
                 Action::AdjustConfig
             }
-            (State::Degrade, Signal::QueueCongest) => {
+            (State::Degrade, Signal::QueueCongest(_latency)) => {
                 // transition 4
                 self.state = State::Degrade;
                 Action::AdjustConfig
@@ -65,7 +67,7 @@ impl AdaptationController {
                 self.state = State::Steady;
                 Action::NoOp
             }
-            (State::Steady, Signal::QueueCongest) => {
+            (State::Steady, Signal::QueueCongest(_latency)) => {
                 // transition 6
                 self.state = State::Degrade;
                 Action::AdjustConfig
@@ -75,7 +77,7 @@ impl AdaptationController {
                 self.state = State::Probe;
                 Action::StartProbe
             }
-            (State::Probe, Signal::QueueCongest) => {
+            (State::Probe, Signal::QueueCongest(_latency)) => {
                 // transtion 8
                 self.state = State::Steady;
                 Action::StopProbe
