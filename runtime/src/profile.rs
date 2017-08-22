@@ -51,6 +51,11 @@ impl<C: DeserializeOwned + Copy + Debug> Profile<C> {
         }
     }
 
+    /// Returns the n-th configuration (we will simply do vector indexing).
+    pub fn nth(&self, level: usize) -> C {
+        self.records[level].config
+    }
+
     /// Returns the initial configuration (we will simply take the first).
     pub fn init_config(&self) -> C {
         self.records

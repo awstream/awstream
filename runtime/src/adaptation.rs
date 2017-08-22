@@ -34,11 +34,13 @@ pub struct Adaptation {
     state: State,
 }
 
-impl Adaptation {
-    pub fn new() -> Adaptation {
+impl Default for Adaptation {
+    fn default() -> Adaptation {
         Adaptation { state: State::Startup }
     }
+}
 
+impl Adaptation {
     pub fn transit(&mut self, signal: Signal) -> Action {
         info!("state: {:?}, signal: {:?}", self.state, signal);
         let action = match (self.state, signal) {

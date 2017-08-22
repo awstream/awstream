@@ -31,6 +31,8 @@ pub mod client;
 mod socket;
 mod utils;
 mod source;
+
+mod video;
 // mod receiver;
 // mod analytics;
 // mod online;
@@ -41,6 +43,12 @@ use chrono::{DateTime, Utc};
 use std::io::{self, Cursor};
 use std::mem;
 use tokio_io::codec::{Decoder, Encoder};
+
+/// The core trait that a struct should react by changing levels.
+pub trait Adapt {
+    /// Adapt to a specific level.
+    fn adapt(&mut self, level: usize);
+}
 
 #[derive(Debug)]
 enum CodecState {

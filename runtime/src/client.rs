@@ -4,8 +4,10 @@
 
 use super::controller::Monitor;
 use super::socket::Socket;
+use super::video::VideoSource;
+use super::adaptation::{Adaptation, Action};
 use futures::{Future, Sink, Stream};
-use source::TimerSource;
+use super::source::TimerSource;
 use std::time::Duration;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
@@ -21,20 +23,34 @@ pub fn run() {
     let work = TcpStream::connect(&remote_addr, &handle);
     let tcp = core.run(work).unwrap();
 
+    let video_source = VideoSource::new("/tmp/x.csv", "/tmp/y.csv");
     // First we create source
-    let (source, src_bytes) = TimerSource::spawn(Duration::from_millis(200), core.handle());
+    let (_level_ctrl, source, src_bytes) =
+        TimerSource::spawn(video_source, Duration::from_millis(200), core.handle());
 
     // Then we create sink (socket)
     let (socket, out_bytes) = Socket::new(tcp);
 
+    // Next, we forward all source data to socket
     let socket_work = socket.send_all(source).map(|_| ());
     core.handle().spawn(socket_work);
 
+    // Lastly, we create adaptation
+    let mut adaptation = Adaptation::default();
+
     // monitor is a timer task
     let monitor = Monitor::new(src_bytes, out_bytes)
-        .map(|_signal| {
-            // take action on signal with adaptation algorithm
-            ()
+        .map(|signal| {
+            let action = adaptation.transit(signal);
+            match action {
+                Action::AdjustConfig => {
+                    // level_ctrl.send(3),
+                    info!("adjusting config {:?}", action);
+                }
+                _ => {
+                    info!("action {:?}", action);
+                }
+            }
         })
         .map_err(|_| ())
         .for_each(|_| Ok(()));
