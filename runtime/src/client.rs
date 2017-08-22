@@ -10,12 +10,6 @@ use std::time::Duration;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 
-enum Event {
-    MonitorTimer,
-    Socket,
-    SourceDatum,
-}
-
 /// Run client
 pub fn run() {
     // Setting up the reactor core
@@ -38,7 +32,10 @@ pub fn run() {
 
     // monitor is a timer task
     let monitor = Monitor::new(src_bytes, out_bytes)
-        .map(|_| Event::MonitorTimer)
+        .map(|_signal| {
+            // take action on signal with adaptation algorithm
+            ()
+        })
         .map_err(|_| ())
         .for_each(|_| Ok(()));
 

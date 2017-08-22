@@ -2,8 +2,8 @@
 /// simple implementation uses a list and performs binary search for items.
 use csv;
 use serde::de::DeserializeOwned;
-use std::path::Path;
 use std::fmt::Debug;
+use std::path::Path;
 
 /// Record is each individual rule in a profile.
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
@@ -14,6 +14,7 @@ pub struct Record<C> {
 }
 
 /// Profile is each individual rule in a profile.
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Profile<C> {
     /// A list of configurations and their respective bandwidth/accuracy info.
     records: Vec<Record<C>>,
