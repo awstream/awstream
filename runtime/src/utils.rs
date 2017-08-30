@@ -26,6 +26,11 @@ impl StreamingStat {
         }
     }
 
+    pub fn sum(&self) -> f64 {
+        trace!("for sum, consumed {:?}", self.buffer);
+        self.buffer.iter().sum()
+    }
+
     pub fn mean(&self) -> (f64, f64) {
         trace!("for mean, consumed {:?}", self.buffer);
         let mut m = MeanWithError::default();

@@ -24,14 +24,14 @@ pub fn run() {
     let work = TcpStream::connect(&remote_addr, &handle);
     let tcp = core.run(work).unwrap();
 
-    let profile_path = "/tmp/profile.csv";
+    let profile_path = "/tmp/mot.profile.csv";
 
-    let video_source = VideoSource::new("/tmp/source.csv", profile_path);
+    let video_source = VideoSource::new("/tmp/mot.source.csv", profile_path);
     let mut profile = video_source.simple_profile();
 
     // First we create source
     let (level_ctrl, source, src_bytes) =
-        TimerSource::spawn(video_source, Duration::from_millis(200), core.handle());
+        TimerSource::spawn(video_source, Duration::from_millis(33), core.handle());
 
     // Then we create sink (socket)
     let (socket, out_bytes) = Socket::new(tcp);
@@ -48,6 +48,7 @@ pub fn run() {
         .map(|signal| {
             let action = adaptation.transit(signal, profile.is_max());
             match action {
+                Action::NoOp => {}
                 Action::AdjustConfig(rate) => {
                     profile.adjust_level(rate);
                     level_ctrl

@@ -181,7 +181,10 @@ impl<C: DeserializeOwned + Copy + Debug> Profile<C> {
     /// Because this is the loading phase, we bail early (use expect!).
     pub fn new<P: AsRef<Path>>(path: P) -> Profile<C> {
         let errmsg = format!("no profile file {:?}", path.as_ref());
-        let mut rdr = csv::Reader::from_path(path).expect(&errmsg);
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(false)
+            .from_path(path)
+            .expect(&errmsg);
         let mut vec = Vec::new();
         for record in rdr.deserialize() {
             let record: Record<C> = record.expect("failed to parse the record");

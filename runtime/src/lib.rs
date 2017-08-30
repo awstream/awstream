@@ -14,6 +14,7 @@ extern crate byteorder;
 extern crate bytes;
 extern crate chrono;
 extern crate csv;
+#[macro_use]
 extern crate futures;
 #[macro_use]
 extern crate log;
@@ -64,6 +65,12 @@ pub trait Adapt {
 
     /// Return a simple profile
     fn simple_profile(&self) -> SimpleProfile;
+}
+
+/// For experiment
+pub trait Experiment {
+    /// Return the size of next datum.
+    fn next_datum(&mut self) -> usize;
 }
 
 #[derive(Debug)]

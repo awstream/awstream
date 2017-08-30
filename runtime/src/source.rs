@@ -1,6 +1,5 @@
-use super::Adapt;
+use super::{Adapt, AdaptSignal, Experiment};
 use super::AsDatum;
-use AdaptSignal;
 use futures::Stream;
 use futures::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use std::sync::Arc;
@@ -22,13 +21,13 @@ enum Incoming {
 }
 
 impl TimerSource {
-    pub fn spawn<As: Adapt + 'static>(
+    pub fn spawn<As: Adapt + Experiment + 'static>(
         mut source: As,
         period: Duration,
         handle: Handle,
     ) -> SourceCtrl {
         let timer = tokio_timer::wheel()
-            .tick_duration(Duration::from_millis(50))
+            .tick_duration(Duration::from_millis(1))
             .build()
             .interval(period)
             .map_err(|_e| ())
@@ -44,7 +43,12 @@ impl TimerSource {
         let work = timer.select(adapter).for_each(
             move |incoming| match incoming {
                 Incoming::Timer => {
-                    let data_to_send = AsDatum::new(vec![0; 1_024_000]);
+                    let size = source.next_datum();
+                    if size == 0 {
+                        return Ok(());
+                    }
+
+                    let data_to_send = AsDatum::new(vec![0; size]);
                     info!("add new data {}", data_to_send.len());
                     counter_clone.clone().fetch_add(
                         data_to_send.len(),

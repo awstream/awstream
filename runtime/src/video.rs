@@ -1,4 +1,5 @@
 use super::Adapt;
+use super::Experiment;
 use super::profile::{Profile, SimpleProfile};
 use csv;
 use std::collections::BTreeMap;
@@ -50,11 +51,14 @@ impl VideoSource {
         P: AsRef<Path>,
     {
         let errmsg = format!("no source file {:?}", source.as_ref());
-        let mut rdr = csv::Reader::from_path(source).expect(&errmsg);
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(false)
+            .from_path(source)
+            .expect(&errmsg);
         let mut map = BTreeMap::new();
         let mut num = 0;
         for record in rdr.deserialize() {
-            let errmsg = "failed to parse the record";
+            let errmsg = "failed to parse the source";
             let record: (VideoConfig, usize, usize) = record.expect(errmsg);
             map.insert((record.0, record.1), record.2);
             num = ::std::cmp::max(num, record.1);
@@ -64,7 +68,7 @@ impl VideoSource {
         let init = p.last_config();
         VideoSource {
             map: map,
-            frame: 0,
+            frame: 1,
             num: num,
             config: init,
             profile: p,
@@ -83,7 +87,7 @@ impl VideoSource {
         ));
         self.frame += 1;
         if self.frame >= self.num {
-            self.frame = 0;
+            self.frame = 1;
         }
         *frame_size
     }
@@ -106,5 +110,11 @@ impl Adapt for VideoSource {
 
     fn simple_profile(&self) -> SimpleProfile {
         self.profile.simplify()
+    }
+}
+
+impl Experiment for VideoSource {
+    fn next_datum(&mut self) -> usize {
+        self.next_frame()
     }
 }

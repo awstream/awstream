@@ -47,30 +47,28 @@ impl Monitor {
 impl Stream for Monitor {
     type Item = Signal;
     type Error = ();
+
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        match self.timer.poll() {
-            Ok(Async::Ready(_t)) => {
-                // timer fired, we check ingest_bytes and out_bytes
-                let produced = self.produced_bytes.swap(0, Ordering::SeqCst);
-                let consumed = self.consumed_bytes.swap(0, Ordering::SeqCst);
+        loop {
+            match try_ready!(self.timer.poll()) {
+                Some(_t) => {
+                    trace!("monitor timer ticks");
+                    // timer fired, we check ingest_bytes and out_bytes
+                    let produced = self.produced_bytes.swap(0, Ordering::SeqCst);
+                    let consumed = self.consumed_bytes.swap(0, Ordering::SeqCst);
 
-                self.queued += produced - consumed;
-                self.rate.add(consumed as f64);
+                    self.queued += produced - consumed;
+                    self.rate.add(consumed as f64);
 
-                info!("rate: {:.3}", self.rate.mean().0);
-                if self.queued > 0 {
-                    let rate = self.rate.mean().0;
-                    let latency = self.queued as f64 / rate;
-                    Ok(Async::Ready(Some(Signal::QueueCongest(rate, latency))))
-                } else {
-                    Ok(Async::Ready(Some(Signal::MonitorTimer)))
+                    info!("rate: {:.3} kbps", self.rate.sum() * 8.0 / 1000.0);
+                    if self.queued > 0 {
+                        let rate = self.rate.sum();
+                        let latency = self.queued as f64 / rate;
+                        return Ok(Async::Ready(Some(Signal::QueueCongest(rate, latency))));
+                    }
                 }
+                None => return Ok(Async::Ready(None)),
             }
-            Ok(Async::NotReady) => {
-                // timer has not fired, so nothing here
-                Ok(Async::NotReady)
-            }
-            Err(_e) => Err(()),
         }
     }
 }

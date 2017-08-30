@@ -3,8 +3,6 @@
 /// Signal
 #[derive(Debug, Clone, Copy)]
 pub enum Signal {
-    MonitorTimer,
-
     /// QueueCongest signal carries the outgoing rate and the estimated latency.
     QueueCongest(f64, f64),
 
