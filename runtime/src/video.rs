@@ -1,8 +1,8 @@
 use super::Adapt;
-use super::profile::Profile;
+use super::profile::{Profile, SimpleProfile};
+use csv;
 use std::collections::BTreeMap;
 use std::path::Path;
-use csv;
 
 #[derive(Deserialize)]
 struct Record {
@@ -71,6 +71,10 @@ impl VideoSource {
         }
     }
 
+    pub fn profile(&self) -> Profile<VideoConfig> {
+        self.profile.clone()
+    }
+
     pub fn next_frame(&mut self) -> usize {
         let frame_size = self.map.get(&(self.config, self.frame)).expect(&format!(
             "Source file corrupted. Failed to find frame size for {}@{}",
@@ -86,7 +90,21 @@ impl VideoSource {
 }
 
 impl Adapt for VideoSource {
-    fn adapt(&mut self, level: usize) {
-        self.config = self.profile.nth(level);
+    fn adapt(&mut self, bw: f64) {
+        match self.profile.adjust_config(bw) {
+            Some(c) => self.config = c.config,
+            None => {}
+        }
+    }
+
+    fn dec_degradation(&mut self) {
+        match self.profile.advance_config() {
+            Some(c) => self.config = c.config,
+            None => {}
+        }
+    }
+
+    fn simple_profile(&self) -> SimpleProfile {
+        self.profile.simplify()
     }
 }

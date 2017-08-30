@@ -40,14 +40,30 @@ mod video;
 use byteorder::{BigEndian, ReadBytesExt};
 use bytes::{BufMut, BytesMut};
 use chrono::{DateTime, Utc};
+use profile::SimpleProfile;
 use std::io::{self, Cursor};
 use std::mem;
 use tokio_io::codec::{Decoder, Encoder};
 
+/// Signals about adaptation actions
+pub enum AdaptSignal {
+    /// Adapt to a designated rate
+    ToRate(f64),
+
+    /// Decrease the adaptation level
+    DecreaseDegradation,
+}
+
 /// The core trait that a struct should react by changing levels.
 pub trait Adapt {
-    /// Adapt to a specific level.
-    fn adapt(&mut self, level: usize);
+    /// Adapts to a bandwidth constraint.
+    fn adapt(&mut self, bandwidth: f64);
+
+    /// Decreases the current degradation level.
+    fn dec_degradation(&mut self);
+
+    /// Return a simple profile
+    fn simple_profile(&self) -> SimpleProfile;
 }
 
 #[derive(Debug)]

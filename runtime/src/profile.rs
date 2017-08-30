@@ -13,44 +13,87 @@ pub struct Record<C> {
     _accuracy: f64,
 }
 
-/// Profile is each individual rule in a profile.
+/// A `SimpleProfile` isn't parameterized by the config.
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Profile<C> {
-    /// A list of configurations and their respective bandwidth/accuracy info.
-    records: Vec<Record<C>>,
+pub struct SimpleProfile {
+    /// A list of bandwidths
+    levels: Vec<f64>,
 
     /// The current config (serving as cache)
     current: usize,
 }
 
-impl<C: DeserializeOwned + Copy + Debug> Profile<C> {
-    /// Creates a new `Profile` instance with a path pointing to the profile
-    /// file (CSV). The columns in the file needs to match the config type.
-    /// Because this is the loading phase, we bail early (use expect!).
-    pub fn new<P: AsRef<Path>>(path: P) -> Profile<C> {
-        let errmsg = format!("no profile file {:?}", path.as_ref());
-        let mut rdr = csv::Reader::from_path(path).expect(&errmsg);
-        let mut vec = Vec::new();
-        for record in rdr.deserialize() {
-            let record: Record<C> = record.expect("failed to parse the record");
-            vec.push(record);
-        }
+impl SimpleProfile {
+    /// Get current profile
+    #[inline]
+    pub fn current(&self) -> usize {
+        self.current
+    }
 
-        Profile {
-            records: vec,
-            current: 0,
+    /// Finds the index of the configuration that matches (equal or smaller
+    /// than) the provided bandwidth.
+    fn get_level_index(&self, bw: f64) -> usize {
+        let pos = (&self.levels).binary_search_by(|v| {
+            v.partial_cmp(&bw).expect("failed to compare bandwidth")
+        });
+        match pos {
+            Ok(i) => i,
+            // If error, it could be the first (only 1 profile) or the last
+            // (fail to find).
+            Err(i) => if i == 0 { 0 } else { i - 1 },
         }
     }
 
-    /// Creates a new profile using a vector containing all the records. For
-    /// testing purpose.
-    pub fn _with_vec(vec: Vec<Record<C>>) -> Profile<C> {
-        Profile {
-            records: vec,
-            current: 0,
+    /// Adjusts the profile with a configuration that satisfies the provided
+    /// bandwidth, i.e., equal or smaller. Returns a tuple of bandwidth and
+    /// configuration.
+    pub fn adjust_level(&mut self, bw: f64) -> Option<usize> {
+        let new_level = self.get_level_index(bw);
+        if self.current != new_level {
+            self.current = new_level;
+            Some(new_level)
+        } else {
+            None
         }
     }
 
+    /// Advances to next config. Returns the record if successful; otherwise,
+    /// return None (when we cannot advance any more).
+    pub fn advance_level(&mut self) -> Option<usize> {
+        if self.current < self.levels.len() - 1 {
+            self.current += 1;
+            Some(self.current)
+        } else {
+            None
+        }
+    }
+
+    /// Finds out the required rate for next configuration.
+    pub fn next_rate(&self) -> Option<f64> {
+        if self.current < self.levels.len() - 1 {
+            Some(self.levels[self.current + 1])
+        } else {
+            None
+        }
+    }
+
+    /// Am I current at maximum allowed configuration?
+    pub fn is_max(&self) -> bool {
+        self.current == self.levels.len() - 1
+    }
+}
+
+/// Profile is each individual rule in a profile.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Profile<C> {
+    /// `SimpleProfile` takes care of indexing, search for appropriate levels.
+    simple_profile: SimpleProfile,
+
+    /// A reference list with detailed configurations and bandwidth/accuracy.
+    records: Vec<Record<C>>,
+}
+
+impl<C: Copy> Profile<C> {
     /// Returns the n-th configuration (we will simply do vector indexing).
     pub fn nth(&self, level: usize) -> C {
         self.records[level].config
@@ -72,63 +115,86 @@ impl<C: DeserializeOwned + Copy + Debug> Profile<C> {
             .config
     }
 
-    /// Finds the index of the configuration that matches (equal or smaller
-    /// than) the provided bandwidth.
-    fn get_config_index(&self, bw: f64) -> usize {
-        let pos = (&self.records).binary_search_by(|v| {
-            v.bandwidth.partial_cmp(&bw).expect(
-                "failed to compare bandwidth",
-            )
-        });
-        match pos {
-            Ok(i) => i,
-            // If error, it could be the first (only 1 profile) or the last
-            // (fail to find).
-            Err(i) => if i == 0 { 0 } else { i - 1 },
-        }
-    }
-
-    /// Updates the profile with a configuration that satisfies the provided
-    /// bandwidth, i.e., equal or smaller. Returns a tuple of bandwidth and
-    /// configuration.
-    pub fn update_config(&mut self, bw: f64) -> Option<Record<C>> {
-        let new = self.get_config_index(bw);
-        if self.current != new {
-            self.current = new;
-            info!(
-                "updating to configuration {:?} (index: {})",
-                self.records[self.current],
-                self.current
-            );
-            Some(self.records[self.current])
-        } else {
-            None
-        }
-    }
-
     /// Returns the current configuration.
     pub fn current_config(&self) -> C {
-        self.records[self.current].config
+        self.records[self.simple_profile.current()].config
+    }
+}
+
+impl<C> Profile<C> {
+    /// Creates a new profile using a vector containing all the records. For
+    /// testing purpose.
+    pub fn _with_vec(vec: Vec<Record<C>>) -> Profile<C> {
+        let simple = vec.iter().map(|r| r.bandwidth).collect();
+        let simple_profile = SimpleProfile {
+            levels: simple,
+            current: 0,
+        };
+        Profile {
+            records: vec,
+            simple_profile: simple_profile,
+        }
+    }
+    pub fn simplify(&self) -> SimpleProfile {
+        self.simple_profile.clone()
+    }
+}
+
+impl<C: Debug + Copy> Profile<C> {
+    /// Adjusts the profile with a configuration that satisfies the provided
+    /// bandwidth, i.e., equal or smaller. Returns a tuple of bandwidth and
+    /// configuration.
+    pub fn adjust_config(&mut self, bw: f64) -> Option<Record<C>> {
+        match self.simple_profile.adjust_level(bw) {
+            Some(new_level) => {
+                info!(
+                    "updating to level {}, configuration {:?}",
+                    new_level,
+                    self.records[new_level]
+                );
+                Some(self.records[new_level])
+            }
+            None => None,
+        }
     }
 
     /// Advances to next config. Returns the record if successful; otherwise,
     /// return None (when we cannot advance any more).
     pub fn advance_config(&mut self) -> Option<Record<C>> {
-        if self.current < self.records.len() - 1 {
-            self.current += 1;
-            trace!("advance to configuration {:?}", self.records[self.current]);
-            Some(self.records[self.current])
-        } else {
-            None
+        match self.simple_profile.advance_level() {
+            Some(new_level) => {
+                info!(
+                    "updating to level {}, configuration {:?}",
+                    new_level,
+                    self.records[new_level]
+                );
+                Some(self.records[new_level])
+            }
+            None => None,
         }
     }
+}
 
-    /// Finds out the required rate for next configuration.
-    pub fn next_rate(&self) -> Option<f64> {
-        if self.current < self.records.len() - 1 {
-            Some(self.records[self.current + 1].bandwidth)
-        } else {
-            None
+impl<C: DeserializeOwned + Copy + Debug> Profile<C> {
+    /// Creates a new `Profile` instance with a path pointing to the profile
+    /// file (CSV). The columns in the file needs to match the config type.
+    /// Because this is the loading phase, we bail early (use expect!).
+    pub fn new<P: AsRef<Path>>(path: P) -> Profile<C> {
+        let errmsg = format!("no profile file {:?}", path.as_ref());
+        let mut rdr = csv::Reader::from_path(path).expect(&errmsg);
+        let mut vec = Vec::new();
+        for record in rdr.deserialize() {
+            let record: Record<C> = record.expect("failed to parse the record");
+            vec.push(record);
+        }
+
+        let simple = vec.iter().map(|r| r.bandwidth).collect();
+        Profile {
+            records: vec,
+            simple_profile: SimpleProfile {
+                levels: simple,
+                current: 0,
+            },
         }
     }
 }
@@ -164,8 +230,8 @@ mod tests {
         assert_eq!(profile.init_config().v, 0);
         assert_eq!(profile.last_config().v, 3);
         assert_eq!(profile.current_config().v, 0);
-        assert_eq!(profile.update_config(4.0).unwrap().config.v, 3);
-        assert_eq!(profile.update_config(1.5).unwrap().config.v, 1);
+        assert_eq!(profile.adjust_config(4.0).unwrap().config.v, 3);
+        assert_eq!(profile.adjust_config(1.5).unwrap().config.v, 1);
     }
 
     #[test]
@@ -174,6 +240,6 @@ mod tests {
         assert_eq!(profile.init_config().v, 0);;
         assert_eq!(profile.last_config().v, 0);
         assert_eq!(profile.current_config().v, 0);
-        assert!(profile.update_config(1.5).is_none());
+        assert!(profile.adjust_config(1.5).is_none());
     }
 }

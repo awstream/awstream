@@ -1,14 +1,15 @@
+use super::Adapt;
 use super::AsDatum;
+use AdaptSignal;
 use futures::Stream;
-use futures::sync::mpsc::{UnboundedSender, UnboundedReceiver, unbounded};
+use futures::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio_core::reactor::Handle;
 use tokio_timer;
-use super::Adapt;
 
-type AdaptControl = UnboundedSender<usize>;
+type AdaptControl = UnboundedSender<AdaptSignal>;
 type DataChannel = UnboundedReceiver<AsDatum>;
 
 pub type SourceCtrl = (AdaptControl, DataChannel, Arc<AtomicUsize>);
@@ -17,7 +18,7 @@ pub struct TimerSource;
 
 enum Incoming {
     Timer,
-    Adapt(usize),
+    Adapt(AdaptSignal),
 }
 
 impl TimerSource {
@@ -32,7 +33,6 @@ impl TimerSource {
             .interval(period)
             .map_err(|_e| ())
             .map(|_e| Incoming::Timer);
-
 
         let (adapt_tx, adapt_rx) = unbounded();
         let adapter = adapt_rx.map(|level| Incoming::Adapt(level));
@@ -54,8 +54,12 @@ impl TimerSource {
                         |_| (),
                     )
                 }
-                Incoming::Adapt(level) => {
-                    source.adapt(level);
+                Incoming::Adapt(AdaptSignal::ToRate(rate)) => {
+                    source.adapt(rate);
+                    Ok(())
+                }
+                Incoming::Adapt(AdaptSignal::DecreaseDegradation) => {
+                    source.dec_degradation();
                     Ok(())
                 }
             },

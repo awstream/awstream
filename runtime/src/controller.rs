@@ -61,7 +61,7 @@ impl Stream for Monitor {
                 if self.queued > 0 {
                     let rate = self.rate.mean().0;
                     let latency = self.queued as f64 / rate;
-                    Ok(Async::Ready(Some(Signal::QueueCongest(latency))))
+                    Ok(Async::Ready(Some(Signal::QueueCongest(rate, latency))))
                 } else {
                     Ok(Async::Ready(Some(Signal::MonitorTimer)))
                 }

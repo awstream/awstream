@@ -2,12 +2,13 @@
 //! event loop (`tokio_core::Core`). The loop selects the next available event
 //! and reacts accordingly.
 
+use super::{Adapt, AdaptSignal};
+use super::adaptation::{Action, Adaptation};
 use super::controller::Monitor;
 use super::socket::Socket;
-use super::video::VideoSource;
-use super::adaptation::{Adaptation, Action};
-use futures::{Future, Sink, Stream};
 use super::source::TimerSource;
+use super::video::VideoSource;
+use futures::{Future, Sink, Stream};
 use std::time::Duration;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
@@ -23,9 +24,13 @@ pub fn run() {
     let work = TcpStream::connect(&remote_addr, &handle);
     let tcp = core.run(work).unwrap();
 
-    let video_source = VideoSource::new("/tmp/x.csv", "/tmp/y.csv");
+    let profile_path = "/tmp/profile.csv";
+
+    let video_source = VideoSource::new("/tmp/source.csv", profile_path);
+    let mut profile = video_source.simple_profile();
+
     // First we create source
-    let (_level_ctrl, source, src_bytes) =
+    let (level_ctrl, source, src_bytes) =
         TimerSource::spawn(video_source, Duration::from_millis(200), core.handle());
 
     // Then we create sink (socket)
@@ -41,10 +46,24 @@ pub fn run() {
     // monitor is a timer task
     let monitor = Monitor::new(src_bytes, out_bytes)
         .map(|signal| {
-            let action = adaptation.transit(signal);
+            let action = adaptation.transit(signal, profile.is_max());
             match action {
-                Action::AdjustConfig => {
-                    // level_ctrl.send(3),
+                Action::AdjustConfig(rate) => {
+                    profile.adjust_level(rate);
+                    level_ctrl
+                        .clone()
+                        .send(AdaptSignal::ToRate(rate))
+                        .wait()
+                        .expect("failed to control source");
+                    info!("adjusting config {:?}", action);
+                }
+                Action::AdvanceConfig => {
+                    profile.advance_level();
+                    level_ctrl
+                        .clone()
+                        .send(AdaptSignal::DecreaseDegradation)
+                        .wait()
+                        .expect("failed to control source");
                     info!("adjusting config {:?}", action);
                 }
                 _ => {
