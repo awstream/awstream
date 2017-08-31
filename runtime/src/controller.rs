@@ -53,18 +53,25 @@ impl Stream for Monitor {
             match try_ready!(self.timer.poll()) {
                 Some(_t) => {
                     trace!("monitor timer ticks");
-                    // timer fired, we check ingest_bytes and out_bytes
+
+                    // timer fired, we check the produced and consumed bytes
                     let produced = self.produced_bytes.swap(0, Ordering::SeqCst);
                     let consumed = self.consumed_bytes.swap(0, Ordering::SeqCst);
 
                     self.queued += produced - consumed;
                     self.rate.add(consumed as f64);
 
-                    info!("rate: {:.3} kbps", self.rate.sum() * 8.0 / 1000.0);
-                    if self.queued > 0 {
-                        let rate = self.rate.sum();
-                        let latency = self.queued as f64 / rate;
+                    let rate = self.rate.sum();
+                    let latency = self.queued as f64 / rate;
+                    info!(
+                        "rate: {:.3} kbps, latency: {:.3} ms",
+                        rate * 8.0 / 1000.0,
+                        latency
+                    );
+                    if latency > 0.1 {
                         return Ok(Async::Ready(Some(Signal::QueueCongest(rate, latency))));
+                    } else {
+                        return Ok(Async::Ready(Some(Signal::QueueEmpty)));
                     }
                 }
                 None => return Ok(Async::Ready(None)),

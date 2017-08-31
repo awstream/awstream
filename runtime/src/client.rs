@@ -45,6 +45,7 @@ pub fn run() {
 
     // monitor is a timer task
     let monitor = Monitor::new(src_bytes, out_bytes)
+        .skip(5)
         .map(|signal| {
             let action = adaptation.transit(signal, profile.is_max());
             match action {

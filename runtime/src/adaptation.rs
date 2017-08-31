@@ -47,7 +47,12 @@ impl Default for Adaptation {
 
 impl Adaptation {
     pub fn transit(&mut self, signal: Signal, max_config: bool) -> Action {
-        info!("state: {:?}, signal: {:?}", self.state, signal);
+        info!(
+            "state: {:?}, signal: {:?}, max?: {}",
+            self.state,
+            signal,
+            max_config
+        );
         let action = match (self.state, signal, max_config) {
             (State::Startup, Signal::QueueEmpty, false) => {
                 // transition 1
@@ -96,6 +101,10 @@ impl Adaptation {
             (State::Probe, Signal::QueueEmpty, _) => {
                 // transition 10
                 Action::IncreaseProbePace
+            }
+            (State::Steady, Signal::QueueEmpty, true) => {
+                // The right state to stay in for as long as possible
+                Action::NoOp
             }
             _ => {
                 error!("Unhandled state {:?} and signal {:?}", self.state, signal);

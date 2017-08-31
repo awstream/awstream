@@ -7,8 +7,8 @@ use tokio_core::net::TcpListener;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
 
-/// Run the server. The server will simply listen for new connections, receive
-/// strings, and write them to STDOUT.
+/// Run the server. The server listens for new connections, parses input, and
+/// prints performance statistics (latency, accuracy, etc).
 ///
 /// The function will block until the server is shutdown.
 pub fn server() {
@@ -23,13 +23,8 @@ pub fn server() {
         let transport = socket.framed(AsCodec::default());
 
         let process_connection = transport.for_each(|as_datum| {
-            match as_datum.ts {
-                Some(t) => {
-                    let now = chrono::Utc::now().timestamp();
-                    info!("latency: {:?}", now - t);
-                }
-                None => {}
-            }
+            let now = chrono::Utc::now().timestamp();
+            info!("level: {}, latency: {}", as_datum.level, now - as_datum.ts);
             Ok(())
         });
 

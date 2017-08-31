@@ -101,6 +101,10 @@ impl Adapt for VideoSource {
         }
     }
 
+    fn current_level(&self) -> usize {
+        self.profile.current_level()
+    }
+
     fn dec_degradation(&mut self) {
         match self.profile.advance_config() {
             Some(c) => self.config = c.config,

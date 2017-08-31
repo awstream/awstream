@@ -48,7 +48,7 @@ impl TimerSource {
                         return Ok(());
                     }
 
-                    let data_to_send = AsDatum::new(vec![0; size]);
+                    let data_to_send = AsDatum::new(source.current_level(), vec![0; size]);
                     info!("add new data {}", data_to_send.len());
                     counter_clone.clone().fetch_add(
                         data_to_send.len(),

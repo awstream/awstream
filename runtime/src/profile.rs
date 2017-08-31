@@ -119,6 +119,11 @@ impl<C: Copy> Profile<C> {
     pub fn current_config(&self) -> C {
         self.records[self.simple_profile.current()].config
     }
+
+    /// Returns the current level.
+    pub fn current_level(&self) -> usize {
+        self.simple_profile.current()
+    }
 }
 
 impl<C> Profile<C> {

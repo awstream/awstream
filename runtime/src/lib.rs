@@ -63,6 +63,9 @@ pub trait Adapt {
     /// Decreases the current degradation level.
     fn dec_degradation(&mut self);
 
+    /// Report the current level.
+    fn current_level(&self) -> usize;
+
     /// Return a simple profile
     fn simple_profile(&self) -> SimpleProfile;
 }
@@ -93,11 +96,11 @@ pub struct AsCodec {
 
 impl AsDatum {
     /// Creates a new `AsDatum` object.
-    pub fn new(data: Vec<u8>) -> AsDatum {
+    pub fn new(level: usize, data: Vec<u8>) -> AsDatum {
         let now = chrono::Utc::now().timestamp();
         let mut d = AsDatum {
-            level: None,
-            ts: Some(now),
+            level: level,
+            ts: now,
             mem: data,
             len: 0,
         };
@@ -130,10 +133,10 @@ impl ::std::fmt::Display for AsDatum {
 pub struct AsDatum {
     /// The degradation level associated with this data. Optional, and when set,
     /// it will be encoded.
-    level: Option<usize>,
+    level: usize,
 
     /// Timestamp associated with the sender. We use unix time at UTC.
-    ts: Option<i64>,
+    ts: i64,
 
     /// The pointer to the actual memory. We only hold a reference to the memory
     /// to facilitate zero-copy network programming. Underlying the hood, it
