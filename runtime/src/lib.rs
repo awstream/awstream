@@ -100,7 +100,7 @@ pub struct AsCodec {
 impl AsDatum {
     /// Creates a new `AsDatum` object.
     pub fn new(level: usize, data: Vec<u8>) -> AsDatum {
-        let now = chrono::Utc::now().timestamp();
+        let now = chrono::Utc::now();
         let mut d = AsDatum {
             level: level,
             ts: now,
@@ -144,7 +144,7 @@ pub struct AsDatum {
     mem: Vec<u8>,
 
     /// Timestamp associated with the sender. We use unix time at UTC.
-    ts: i64,
+    ts: chrono::DateTime<chrono::Utc>,
 
     /// The size of serialized version of this data structure (except this
     /// field). We use this field as a cache to avoid repeated call for
