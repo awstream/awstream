@@ -5,28 +5,29 @@
 use super::{Adapt, AdaptSignal};
 use super::adaptation::{Action, Adaptation};
 use super::controller::Monitor;
+use super::setting::Setting;
 use super::socket::Socket;
 use super::source::TimerSource;
 use super::video::VideoSource;
 use futures::{Future, Sink, Stream};
+use std::net::SocketAddr;
 use std::time::Duration;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
-use std::net::SocketAddr;
 
 /// Run client
-pub fn run(addr: &SocketAddr) {
+pub fn run(setting: Setting) {
     // Setting up the reactor core
     let mut core = Core::new().unwrap();
 
     // Creates the TCP connection (this is synchronous!)
     let handle = core.handle();
-    let work = TcpStream::connect(addr, &handle);
+    let ip = setting.server.parse().unwrap();
+    let address = SocketAddr::new(ip, setting.port);
+    let work = TcpStream::connect(&address, &handle);
     let tcp = core.run(work).unwrap();
 
-    let profile_path = "/tmp/mot.profile.csv";
-
-    let video_source = VideoSource::new("/tmp/mot.source.csv", profile_path);
+    let video_source = VideoSource::new(setting.source_path, setting.profile_path);
     let mut profile = video_source.simple_profile();
 
     // First we create source

@@ -14,7 +14,6 @@ extern crate log;
 
 use awstream::*;
 use std::{env, str};
-use std::net::SocketAddr;
 
 pub fn main() {
     let format = |record: &log::LogRecord| {
@@ -38,7 +37,5 @@ pub fn main() {
 
     // Client runs
     let setting = Setting::init("Setting.toml").unwrap();
-    let ip = setting.server.parse().unwrap();
-    let address = SocketAddr::new(ip, setting.port);
-    client::run(&address);
+    client::run(setting);
 }

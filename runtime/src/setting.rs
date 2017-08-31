@@ -15,10 +15,10 @@ pub struct Setting {
     pub port: u16,
 
     /// Path to the profile.
-    pub profile_path: Option<String>,
+    pub profile_path: String,
 
     /// Path to source (video).
-    pub source_path: Option<String>,
+    pub source_path: String,
 }
 
 impl Setting {
