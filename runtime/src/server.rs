@@ -2,10 +2,16 @@
 
 use AsCodec;
 use chrono;
+use chrono::{DateTime, TimeZone};
 use futures::{Future, Stream};
 use tokio_core::net::TcpListener;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
+
+fn time_diff<Tz: TimeZone>(a: DateTime<Tz>, b: DateTime<Tz>) -> f64 {
+    (a.timestamp() - b.timestamp()) as f64 +
+        (a.timestamp_subsec_millis() - b.timestamp_subsec_millis()) as f64 / 1000.0
+}
 
 /// Run the server. The server listens for new connections, parses input, and
 /// prints performance statistics (latency, accuracy, etc).
@@ -14,7 +20,7 @@ use tokio_io::AsyncRead;
 pub fn server(port: u16) {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
-    let addr = ([127, 0, 0, 1], port).into();
+    let addr = ([0, 0, 0, 0], port).into();
     let listener = TcpListener::bind(&addr, &handle).unwrap();
 
     // Accept all incoming sockets
@@ -22,8 +28,12 @@ pub fn server(port: u16) {
         let transport = socket.framed(AsCodec::default());
 
         let process_connection = transport.for_each(|as_datum| {
-            let now = chrono::Utc::now().timestamp();
-            info!("level: {}, latency: {}", as_datum.level, now - as_datum.ts);
+            let now = chrono::Utc::now();
+            info!(
+                "level: {}, latency: {}",
+                as_datum.level,
+                time_diff(now, as_datum.ts)
+            );
             Ok(())
         });
 
