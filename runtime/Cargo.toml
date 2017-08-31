@@ -22,6 +22,7 @@ tokio-service = "0.1"
 tokio-timer = "0.1"
 
 [[bin]]
-doc = false
-name = "main"
-path = "src/main.rs"
+name = "client"
+
+[[bin]]
+name = "server"

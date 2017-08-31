@@ -8,10 +8,6 @@
 //! sense to use `tokio-proto`. Instead, we use the transport directly.
 
 extern crate awstream;
-extern crate futures;
-extern crate tokio_io;
-extern crate tokio_core;
-extern crate bytes;
 extern crate env_logger;
 extern crate chrono;
 extern crate log;

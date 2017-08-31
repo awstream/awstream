@@ -218,7 +218,7 @@ mod tests {
     use super::*;
     #[test]
     fn encode_decode_works() {
-        let d = AsDatum::new(String::from("Hello").into_bytes());
+        let d = AsDatum::new(0, String::from("Hello").into_bytes());
         let expected = d.clone();
         let mut buf = bytes::BytesMut::new();
         let mut codec = AsCodec::default();
