@@ -8,6 +8,7 @@
 #![deny(missing_docs)]
 #![allow(dead_code)]
 
+extern crate toml;
 extern crate average;
 extern crate bincode;
 extern crate byteorder;
@@ -26,6 +27,8 @@ extern crate tokio_io;
 extern crate tokio_timer;
 
 mod profile;
+mod setting;
+pub use setting::Setting;
 mod adaptation;
 mod controller;
 pub mod client;
@@ -135,13 +138,13 @@ pub struct AsDatum {
     /// it will be encoded.
     level: usize,
 
-    /// Timestamp associated with the sender. We use unix time at UTC.
-    ts: i64,
-
     /// The pointer to the actual memory. We only hold a reference to the memory
     /// to facilitate zero-copy network programming. Underlying the hood, it
     /// uses reference counting for safe free.
     mem: Vec<u8>,
+
+    /// Timestamp associated with the sender. We use unix time at UTC.
+    ts: i64,
 
     /// The size of serialized version of this data structure (except this
     /// field). We use this field as a cache to avoid repeated call for

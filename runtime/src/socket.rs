@@ -45,10 +45,7 @@ impl Sink for Socket {
                 self.bytes.fetch_add(self.last_item_size, Ordering::SeqCst);
                 Ok(AsyncSink::Ready)
             }
-            Ok(AsyncSink::NotReady(t)) => {
-                info!("failed to send, should notify");
-                Ok(AsyncSink::NotReady(t))
-            }
+            Ok(AsyncSink::NotReady(t)) => Ok(AsyncSink::NotReady(t)),
             Err(_e) => Err(()),
         }
     }

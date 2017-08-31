@@ -54,7 +54,7 @@ impl TimerSource {
                         data_to_send.len(),
                         Ordering::SeqCst,
                     );
-                    data_tx.clone().unbounded_send(data_to_send).map(|_| ()).map_err(
+                    data_tx.clone().send(data_to_send).map(|_| ()).map_err(
                         |_| (),
                     )
                 }

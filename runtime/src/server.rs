@@ -11,12 +11,11 @@ use tokio_io::AsyncRead;
 /// prints performance statistics (latency, accuracy, etc).
 ///
 /// The function will block until the server is shutdown.
-pub fn server() {
+pub fn server(port: u16) {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
-    let remote_addr = "0.0.0.0:8888".parse().unwrap();
-
-    let listener = TcpListener::bind(&remote_addr, &handle).unwrap();
+    let addr = ([127, 0, 0, 1], port).into();
+    let listener = TcpListener::bind(&addr, &handle).unwrap();
 
     // Accept all incoming sockets
     let server = listener.incoming().for_each(move |(socket, _)| {

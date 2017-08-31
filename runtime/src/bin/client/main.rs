@@ -13,8 +13,8 @@ extern crate chrono;
 extern crate log;
 
 use awstream::*;
-use std::{env, str, thread};
-use std::time::Duration;
+use std::{env, str};
+use std::net::SocketAddr;
 
 pub fn main() {
     let format = |record: &log::LogRecord| {
@@ -36,12 +36,9 @@ pub fn main() {
 
     builder.init().unwrap();
 
-    // Run the server in a dedicated thread
-    thread::spawn(|| server::server());
-
-    // Wait a moment for the server to start...
-    thread::sleep(Duration::from_millis(100));
-
     // Client runs
-    client::run();
+    let setting = Setting::init("Setting.toml").unwrap();
+    let ip = setting.server.parse().unwrap();
+    let address = SocketAddr::new(ip, setting.port);
+    client::run(&address);
 }

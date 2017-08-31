@@ -1,0 +1,6 @@
+# server = "52.32.115.31"
+server = "127.0.0.1"
+port = 8889
+
+profile_path = "/tmp/mot.profile.csv"
+source_path = "/tmp/mot.source.csv"

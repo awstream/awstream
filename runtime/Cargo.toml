@@ -9,6 +9,7 @@ bincode = "0.8"
 byteorder = "1"
 bytes = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
+toml = "0.4"
 csv = "1.0.0-beta.4"
 env_logger = "0.3"
 futures = "0.1"

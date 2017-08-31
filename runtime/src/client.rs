@@ -12,16 +12,16 @@ use futures::{Future, Sink, Stream};
 use std::time::Duration;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
+use std::net::SocketAddr;
 
 /// Run client
-pub fn run() {
+pub fn run(addr: &SocketAddr) {
     // Setting up the reactor core
     let mut core = Core::new().unwrap();
 
     // Creates the TCP connection (this is synchronous!)
-    let remote_addr = "127.0.0.1:14566".parse().unwrap();
     let handle = core.handle();
-    let work = TcpStream::connect(&remote_addr, &handle);
+    let work = TcpStream::connect(addr, &handle);
     let tcp = core.run(work).unwrap();
 
     let profile_path = "/tmp/mot.profile.csv";
