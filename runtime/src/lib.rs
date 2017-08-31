@@ -29,6 +29,7 @@ mod profile;
 mod adaptation;
 mod controller;
 pub mod client;
+pub mod server;
 mod socket;
 mod utils;
 mod source;
@@ -40,7 +41,6 @@ mod video;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use bytes::{BufMut, BytesMut};
-use chrono::{DateTime, Utc};
 use profile::SimpleProfile;
 use std::io::{self, Cursor};
 use std::mem;
@@ -94,9 +94,10 @@ pub struct AsCodec {
 impl AsDatum {
     /// Creates a new `AsDatum` object.
     pub fn new(data: Vec<u8>) -> AsDatum {
+        let now = chrono::Utc::now().timestamp();
         let mut d = AsDatum {
             level: None,
-            ts: None,
+            ts: Some(now),
             mem: data,
             len: 0,
         };
@@ -131,8 +132,8 @@ pub struct AsDatum {
     /// it will be encoded.
     level: Option<usize>,
 
-    /// Timestamp associated with the sender. We use
-    ts: Option<DateTime<Utc>>,
+    /// Timestamp associated with the sender. We use unix time at UTC.
+    ts: Option<i64>,
 
     /// The pointer to the actual memory. We only hold a reference to the memory
     /// to facilitate zero-copy network programming. Underlying the hood, it
