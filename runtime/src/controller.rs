@@ -61,12 +61,12 @@ impl Stream for Monitor {
                     self.queued += produced - consumed;
                     self.rate.add(consumed as f64);
 
-                    let rate = self.rate.sum();
-                    let latency = self.queued as f64 / rate;
+                    let rate = self.rate.sum(); // rate is bytes/sec
+                    let latency = self.queued as f64 / rate; // queued is bytes
                     info!(
                         "rate: {:.3} kbps, latency: {:.3} ms",
                         rate * 8.0 / 1000.0,
-                        latency
+                        latency * 1000.0
                     );
                     if latency > 0.1 {
                         return Ok(Async::Ready(Some(Signal::QueueCongest(rate, latency))));

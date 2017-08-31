@@ -9,8 +9,8 @@ use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
 
 fn time_diff<Tz: TimeZone>(a: DateTime<Tz>, b: DateTime<Tz>) -> f64 {
-    (a.timestamp() - b.timestamp()) as f64 +
-        (a.timestamp_subsec_millis() - b.timestamp_subsec_millis()) as f64 / 1000.0
+    (a.timestamp() as f64 - b.timestamp() as f64) +
+        (a.timestamp_subsec_millis() as f64 - b.timestamp_subsec_millis() as f64) / 1000.0
 }
 
 /// Run the server. The server listens for new connections, parses input, and
