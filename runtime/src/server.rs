@@ -1,6 +1,6 @@
 //! The main entrance for server functionality.
 
-use AsCodec;
+use super::{AsCodec, AsDatumType};
 use chrono;
 use chrono::{DateTime, TimeZone};
 use futures::{Future, Stream};
@@ -28,12 +28,14 @@ pub fn server(port: u16) {
         let transport = socket.framed(AsCodec::default());
 
         let process_connection = transport.for_each(|as_datum| {
-            let now = chrono::Utc::now();
-            info!(
-                "level: {}, latency: {}",
-                as_datum.level,
-                time_diff(now, as_datum.ts)
-            );
+            match as_datum.datum_type() {
+                AsDatumType::Live(level) => {
+                    let now = chrono::Utc::now();
+                    let latency = time_diff(now, as_datum.ts);
+                    info!("level: {}, latency: {}", level, latency);
+                }
+                _ => {}
+            }
             Ok(())
         });
 

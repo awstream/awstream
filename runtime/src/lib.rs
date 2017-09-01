@@ -51,11 +51,20 @@ use tokio_io::codec::{Decoder, Encoder};
 
 /// Signals about adaptation actions
 pub enum AdaptSignal {
-    /// Adapt to a designated rate
+    /// Adapts to a designated bandwidth in kbps.
     ToRate(f64),
 
-    /// Decrease the adaptation level
+    /// Decreases the adaptation level.
     DecreaseDegradation,
+
+    /// Starts probing with target bandwidth in kbps.
+    StartProbe(f64),
+
+    /// Increases probe pace.
+    IncreaseProbePace,
+
+    /// Stops the probing.
+    StopProbe,
 }
 
 /// The core trait that a struct should react by changing levels.
@@ -101,11 +110,11 @@ pub struct AsCodec {
 }
 
 impl AsDatum {
-    /// Creates a new `AsDatum` object.
+    /// Creates a new `AsDatum` object for live data.
     pub fn new(level: usize, data: Vec<u8>) -> AsDatum {
         let now = chrono::Utc::now();
         let mut d = AsDatum {
-            level: level,
+            t: AsDatumType::Live(level),
             ts: now,
             mem: data,
             len: 0,
@@ -113,6 +122,26 @@ impl AsDatum {
         let len = bincode::serialized_size(&d);
         d.len = len;
         d
+    }
+
+    /// Creates a new `AsDatum` object for probing.
+    pub fn probe(size: usize) -> AsDatum {
+        let now = chrono::Utc::now();
+        let mut d = AsDatum {
+            t: AsDatumType::Dummy,
+            ts: now,
+            mem: vec![0; size],
+            len: 0,
+        };
+        let len = bincode::serialized_size(&d);
+        d.len = len;
+        d
+    }
+
+
+    /// Returns the datum type.
+    pub fn datum_type(&self) -> AsDatumType {
+        self.t
     }
 
     /// Return the serialized length of this data structure
@@ -123,23 +152,41 @@ impl AsDatum {
 
 impl ::std::fmt::Display for AsDatum {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(
-            f,
-            "level: {:?}, ts: {:?}, mem (with size {}), len: {}",
-            self.level,
-            self.ts,
-            self.mem.len(),
-            self.len
-        )
+        match self.t {
+            AsDatumType::Live(level) => {
+                write!(
+                    f,
+                    "level: {:?}, ts: {:?}, mem (with size {}), len: {}",
+                    level,
+                    self.ts,
+                    self.mem.len(),
+                    self.len
+                )
+            }
+            AsDatumType::Raw => write!(f, "raw data: {}", self.len),
+            AsDatumType::Dummy => write!(f, "probe data: {}", self.len),
+        }
     }
+}
+
+/// Datum type.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AsDatumType {
+    /// Raw data (used for online profiling).
+    Raw,
+
+    /// Dummy probe packet.
+    Dummy,
+
+    /// Actual live data (meaningful), with level
+    Live(usize),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 /// `AsDatum` is the core data object for streaming over the network.
 pub struct AsDatum {
-    /// The degradation level associated with this data. Optional, and when set,
-    /// it will be encoded.
-    level: usize,
+    /// The type of this datum.
+    t: AsDatumType,
 
     /// The pointer to the actual memory. We only hold a reference to the memory
     /// to facilitate zero-copy network programming. Underlying the hood, it
