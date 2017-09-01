@@ -21,15 +21,11 @@ enum Incoming {
 }
 
 impl TimerSource {
-    pub fn spawn<As: Adapt + Experiment + 'static>(
-        mut source: As,
-        period: Duration,
-        handle: Handle,
-    ) -> SourceCtrl {
+    pub fn spawn<As: Adapt + Experiment + 'static>(mut source: As, handle: Handle) -> SourceCtrl {
         let timer = tokio_timer::wheel()
             .tick_duration(Duration::from_millis(1))
             .build()
-            .interval(period)
+            .interval(Duration::from_millis(source.period_in_ms()))
             .map_err(|_e| ())
             .map(|_e| Incoming::Timer);
 

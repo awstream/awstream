@@ -66,6 +66,9 @@ pub trait Adapt {
     /// Decreases the current degradation level.
     fn dec_degradation(&mut self);
 
+    /// Period
+    fn period_in_ms(&self) -> u64;
+
     /// Report the current level.
     fn current_level(&self) -> usize;
 

@@ -11,7 +11,6 @@ use super::source::TimerSource;
 use super::video::VideoSource;
 use futures::{Future, Sink, Stream};
 use std::net::SocketAddr;
-use std::time::Duration;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 
@@ -31,8 +30,7 @@ pub fn run(setting: Setting) {
     let mut profile = video_source.simple_profile();
 
     // First we create source
-    let (level_ctrl, source, src_bytes) =
-        TimerSource::spawn(video_source, Duration::from_millis(33), core.handle());
+    let (level_ctrl, source, src_bytes) = TimerSource::spawn(video_source, core.handle());
 
     // Then we create sink (socket)
     let (socket, out_bytes) = Socket::new(tcp);

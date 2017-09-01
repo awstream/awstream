@@ -21,8 +21,12 @@ pub struct Monitor {
 
     /// Queued bytes.
     queued: usize,
+
+    /// Empty counts.
+    empty_count: usize,
 }
 
+const QUEUE_EMPTY_REQUIRED: usize = 10;
 const MONITOR_INTERVAL: u64 = 100;
 
 impl Monitor {
@@ -40,7 +44,37 @@ impl Monitor {
             rate: StreamingStat::with_capacity(10),
 
             queued: 0,
+            empty_count: 0,
         }
+    }
+
+    fn react_to_timer(&mut self) -> Option<Signal> {
+        trace!("monitor timer ticks");
+
+        // timer fired, we check the produced and consumed bytes
+        let produced = self.produced_bytes.swap(0, Ordering::SeqCst);
+        let consumed = self.consumed_bytes.swap(0, Ordering::SeqCst);
+
+        self.queued += produced - consumed;
+        self.rate.add(consumed as f64);
+
+        let rate = self.rate.sum() * 8.0 / 1000.0; // rate is kbps
+        let latency = self.queued as f64 / rate; // queued is bytes
+        info!(
+            "rate: {:.3} kbps, latency: {:.3} ms",
+            rate,
+            latency * 1000.0
+        );
+        if latency > 0.1 {
+            self.empty_count = 0;
+            return Some(Signal::QueueCongest(rate, latency));
+        } else {
+            self.empty_count += 1;
+            if self.empty_count > QUEUE_EMPTY_REQUIRED {
+                return Some(Signal::QueueEmpty);
+            }
+        }
+        return None;
     }
 }
 
@@ -52,29 +86,14 @@ impl Stream for Monitor {
         loop {
             match try_ready!(self.timer.poll()) {
                 Some(_t) => {
-                    trace!("monitor timer ticks");
-
-                    // timer fired, we check the produced and consumed bytes
-                    let produced = self.produced_bytes.swap(0, Ordering::SeqCst);
-                    let consumed = self.consumed_bytes.swap(0, Ordering::SeqCst);
-
-                    self.queued += produced - consumed;
-                    self.rate.add(consumed as f64);
-
-                    let rate = self.rate.sum(); // rate is bytes/sec
-                    let latency = self.queued as f64 / rate; // queued is bytes
-                    info!(
-                        "rate: {:.3} kbps, latency: {:.3} ms",
-                        rate * 8.0 / 1000.0,
-                        latency * 1000.0
-                    );
-                    if latency > 0.1 {
-                        return Ok(Async::Ready(Some(Signal::QueueCongest(rate, latency))));
-                    } else {
-                        return Ok(Async::Ready(Some(Signal::QueueEmpty)));
+                    match self.react_to_timer() {
+                        Some(s) => return Ok(Async::Ready(Some(s))),
+                        None => {}
                     }
                 }
-                None => return Ok(Async::Ready(None)),
+                None => {
+                    return Ok(Async::Ready(None));
+                }
             }
         }
     }

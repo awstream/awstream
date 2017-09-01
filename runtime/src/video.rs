@@ -115,6 +115,10 @@ impl Adapt for VideoSource {
     fn simple_profile(&self) -> SimpleProfile {
         self.profile.simplify()
     }
+
+    fn period_in_ms(&self) -> u64 {
+        33
+    }
 }
 
 impl Experiment for VideoSource {
