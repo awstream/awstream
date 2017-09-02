@@ -26,7 +26,9 @@ pub struct Monitor {
     empty_count: usize,
 }
 
+/// QUEUE_EMPTY_REQUIRED * MONITOR_INTERVAL => 1 seconds for each Q_E
 const QUEUE_EMPTY_REQUIRED: usize = 10;
+
 const MONITOR_INTERVAL: u64 = 100;
 
 impl Monitor {

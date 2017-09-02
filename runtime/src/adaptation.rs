@@ -21,6 +21,7 @@ pub enum Action {
     /// When the action is `AdjustConfig`, we inform the estimated outgoing rate
     AdjustConfig(f64),
 
+    /// Start the probe with a target bandwidth (in kbps)
     StartProbe,
     IncreaseProbePace,
     StopProbe,

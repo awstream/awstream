@@ -15,49 +15,74 @@ pub type SourceCtrl = (AdaptControl, DataChannel, Arc<AtomicUsize>);
 
 pub struct TimerSource;
 
+/// `ProbeTracker` controls the probing behavior. The core function is `next`
+/// that returns an `Option<AsDatum>`, it is either a probe datum, or indicates
+/// the probing has done.
+///
+/// Probing is evenly spaced in each tick within a second. So complication of
+/// this data type is due to the calculation of a proper rate. See `start_probe`
+/// for details.
 struct ProbeTracker {
+    /// We need to know the tick_period to calculate how large each probe packet
+    /// is for a even distribution.
     pub tick_period: u64,
 
+    /// The target probe bandwidth.
     pub target_in_kbps: f64,
-    pub target_pace: f64,
-    pub pace: f64,
+
+    /// The target pace, i.e. packet size for each tick. This is derived from
+    /// `target_in_kbps`.
+    pub target_pace: usize,
+
+    /// The pace, i.e. the current packet size for each tick.
+    pub pace: usize,
+
+    /// Step in each `inc_pace`.
+    pub delta: usize,
 }
+
+const NUM_PROBE_REQUIRED: usize = 5;
 
 impl ProbeTracker {
     fn new(tick_period: u64) -> ProbeTracker {
         ProbeTracker {
             tick_period: tick_period,
-
             target_in_kbps: 0.0,
-            target_pace: 0.0,
-            pace: 0.0,
+            target_pace: 0,
+            delta: 0,
+            pace: 0,
         }
     }
 
-    pub fn start_probe(&mut self, current_in_kbps: f64, target_in_kbps: f64) {
-        self.target_in_kbps = target_in_kbps;
+    pub fn start_probe(&mut self, additional_kbps: f64) {
+        self.target_in_kbps = additional_kbps;
 
         let bytes_per_sec = self.target_in_kbps * 1000.0 / 8.0;
         let ticks_per_sec = 1000.0 / self.tick_period as f64;
         let size_per_tick = bytes_per_sec / ticks_per_sec;
-        self.target_pace = size_per_tick;
+        self.target_pace = size_per_tick as usize;
 
-        let ratio = self.target_in_kbps / current_in_kbps;
-        self.pace = self.target_pace / ratio;
+        self.delta = self.target_pace / NUM_PROBE_REQUIRED;
+        self.pace = self.delta;
     }
 
+    /// Probing is the additive increase phase (as AIMD in TCP).
     pub fn inc_pace(&mut self) {
-        self.pace = self.pace * 5.0 / 4.0;
+        if self.pace < self.target_pace {
+            self.pace = self.pace + self.delta;
+        }
     }
 
     pub fn stop_probe(&mut self) {
-        self.target_pace = 0.0;
         self.target_in_kbps = 0.0;
+        self.target_pace = 0;
+        self.pace = 0;
+        self.delta = 0;
     }
 
-    fn next_packet(&self) -> Option<AsDatum> {
-        if self.target_pace > 0.0 {
-            Some(AsDatum::probe(self.pace as usize))
+    fn next(&self) -> Option<AsDatum> {
+        if self.target_pace > 0 {
+            Some(AsDatum::probe(self.pace))
         } else {
             None
         }
@@ -96,7 +121,7 @@ impl TimerSource {
                         return Ok(());
                     }
 
-                    if let Some(p) = prober.next_packet() {
+                    if let Some(p) = prober.next() {
                         counter_clone.clone().fetch_add(p.len(), Ordering::SeqCst);
                         data_tx.clone().send(p).map(|_| ()).map_err(|_| ()).expect(
                             "failed to send probing packet",
@@ -123,7 +148,7 @@ impl TimerSource {
                     Ok(())
                 }
                 Incoming::Adapt(AdaptSignal::StartProbe(target_in_kbps)) => {
-                    prober.start_probe(target_in_kbps, target_in_kbps);
+                    prober.start_probe(target_in_kbps);
                     Ok(())
                 }
                 Incoming::Adapt(AdaptSignal::IncreaseProbePace) => {

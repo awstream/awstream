@@ -77,6 +77,15 @@ impl SimpleProfile {
         }
     }
 
+    /// Finds out the required delta rate for next configuration.
+    pub fn next_rate_delta(&self) -> Option<f64> {
+        if self.current < self.levels.len() - 1 {
+            Some(self.levels[self.current + 1] - self.levels[self.current])
+        } else {
+            None
+        }
+    }
+
     /// Am I current at maximum allowed configuration?
     pub fn is_max(&self) -> bool {
         self.current == self.levels.len() - 1
