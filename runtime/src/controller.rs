@@ -70,7 +70,12 @@ impl Monitor {
 
         let rate = self.rate.sum() * 8.0 / 1000.0; // rate is kbps
         let latency = self.queued as f64 * 8.0 / rate; // queued is bytes
-        info!("rate: {:.1} kbps, latency: {:.1} ms", rate, latency);
+        info!(
+            "queued: {:?} kbytes, rate: {:.1} kbps, latency: {:.1} ms",
+            self.queued / 1000,
+            rate,
+            latency
+        );
         if latency > 0.1 {
             self.empty_count = 0;
             return Some(Signal::QueueCongest(rate, latency));
