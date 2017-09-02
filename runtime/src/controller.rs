@@ -50,8 +50,9 @@ impl Monitor {
             consumed_bytes: consumer,
             probe_status: probe_status,
 
-            // every 10 samples is every second
-            rate: StreamingStat::with_capacity(10),
+            // every 10 samples is every second, we use the estimation for the
+            // past 5 seconds
+            rate: StreamingStat::with_capacity(10 * 5),
 
             queued: 0,
             empty_count: 0,
@@ -68,7 +69,7 @@ impl Monitor {
         self.queued += produced - consumed;
         self.rate.add(consumed as f64);
 
-        let rate = self.rate.sum() * 8.0 / 1000.0; // rate is kbps
+        let rate = self.rate.sum() * 8.0 / 5000.0; // rate is kbps
         let latency = self.queued as f64 * 8.0 / rate; // queued is bytes
         info!(
             "queued: {:?} kbytes, rate: {:.1} kbps, latency: {:.1} ms",
