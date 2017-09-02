@@ -77,6 +77,7 @@ impl Monitor {
         } else {
             self.empty_count += 1;
             if self.probe_status.load(Ordering::SeqCst) {
+                self.probe_status.store(false, Ordering::SeqCst);
                 return Some(Signal::ProbeDone);
             } else if self.empty_count > QUEUE_EMPTY_REQUIRED {
                 return Some(Signal::QueueEmpty);
