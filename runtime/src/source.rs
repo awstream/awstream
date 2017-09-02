@@ -3,7 +3,7 @@ use super::AsDatum;
 use futures::Stream;
 use futures::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
 use std::time::Duration;
 use tokio_core::reactor::Handle;
 use tokio_timer;
@@ -11,7 +11,7 @@ use tokio_timer;
 type AdaptControl = UnboundedSender<AdaptSignal>;
 type DataChannel = UnboundedReceiver<AsDatum>;
 
-pub type SourceCtrl = (AdaptControl, DataChannel, Arc<AtomicUsize>);
+pub type SourceCtrl = (AdaptControl, DataChannel, Arc<AtomicUsize>, Arc<AtomicBool>);
 
 pub struct TimerSource;
 
@@ -67,9 +67,12 @@ impl ProbeTracker {
     }
 
     /// Probing is the additive increase phase (as AIMD in TCP).
-    pub fn inc_pace(&mut self) {
+    pub fn inc_pace(&mut self) -> bool {
         if self.pace < self.target_pace {
             self.pace = self.pace + self.delta;
+            true
+        } else {
+            false
         }
     }
 
@@ -112,6 +115,8 @@ impl TimerSource {
         let counter_clone = counter.clone();
 
         let mut prober = ProbeTracker::new(timer_tick);
+        let probe_done = Arc::new(AtomicBool::new(false));
+        let probe_done_clone = probe_done.clone();
 
         let work = timer.select(adapter).for_each(
             move |incoming| match incoming {
@@ -152,7 +157,9 @@ impl TimerSource {
                     Ok(())
                 }
                 Incoming::Adapt(AdaptSignal::IncreaseProbePace) => {
-                    prober.inc_pace();
+                    if !prober.inc_pace() {
+                        probe_done_clone.clone().store(true, Ordering::SeqCst);
+                    }
                     Ok(())
                 }
                 Incoming::Adapt(AdaptSignal::StopProbe) => {
@@ -163,6 +170,6 @@ impl TimerSource {
         );
         handle.spawn(work);
 
-        (adapt_tx, data_rx, counter.clone())
+        (adapt_tx, data_rx, counter.clone(), probe_done)
     }
 }

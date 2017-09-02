@@ -33,7 +33,7 @@ pub fn run(setting: Setting) {
 
     // First we create source
     let handle = core.handle();
-    let (src_ctrl, source, src_bytes) = TimerSource::spawn(video_source, handle);
+    let (src_ctrl, source, src_bytes, probe_done) = TimerSource::spawn(video_source, handle);
 
     // Then we create sink (socket)
     let (socket, out_bytes) = Socket::new(tcp);
@@ -46,7 +46,7 @@ pub fn run(setting: Setting) {
     let mut adaptation = Adaptation::default();
 
     // monitor is a timer task
-    let monitor = Monitor::new(src_bytes, out_bytes)
+    let monitor = Monitor::new(src_bytes, out_bytes, probe_done)
         .skip(5)
         .map(|signal| {
             core_adapt(signal, &mut adaptation, &mut profile, src_ctrl.clone())

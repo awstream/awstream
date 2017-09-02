@@ -10,7 +10,6 @@ pub enum Signal {
     QueueEmpty,
 
     ProbeDone,
-    ConfigMax,
 }
 
 #[derive(Debug, Clone, Copy)]
