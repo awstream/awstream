@@ -8,9 +8,9 @@ use tokio_core::net::TcpListener;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
 
-fn time_diff<Tz: TimeZone>(a: DateTime<Tz>, b: DateTime<Tz>) -> f64 {
-    (a.timestamp() as f64 - b.timestamp() as f64) +
-        (a.timestamp_subsec_millis() as f64 - b.timestamp_subsec_millis() as f64) / 1000.0
+fn time_diff_in_ms<Tz: TimeZone>(a: DateTime<Tz>, b: DateTime<Tz>) -> f64 {
+    (a.timestamp() as f64 - b.timestamp() as f64) * 1000.0 +
+        (a.timestamp_subsec_millis() as f64 - b.timestamp_subsec_millis() as f64)
 }
 
 /// Run the server. The server listens for new connections, parses input, and
@@ -31,8 +31,8 @@ pub fn server(port: u16) {
             match as_datum.datum_type() {
                 AsDatumType::Live(level) => {
                     let now = chrono::Utc::now();
-                    let latency = time_diff(now, as_datum.ts);
-                    info!("level: {}, latency: {}", level, latency);
+                    let latency = time_diff_in_ms(now, as_datum.ts);
+                    info!("level: {}, latency: {:.1} ms", level, latency);
                 }
                 _ => {}
             }
