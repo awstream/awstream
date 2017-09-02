@@ -128,9 +128,11 @@ impl TimerSource {
 
                     if let Some(p) = prober.next() {
                         counter_clone.clone().fetch_add(p.len(), Ordering::SeqCst);
-                        data_tx.clone().send(p).map(|_| ()).map_err(|_| ()).expect(
-                            "failed to send probing packet",
-                        );
+                        data_tx
+                            .unbounded_send(p)
+                            .map(|_| ())
+                            .map_err(|_| ())
+                            .expect("failed to send probing packet");
                     }
 
                     let level = source.current_level();
@@ -140,7 +142,7 @@ impl TimerSource {
                         data_to_send.len(),
                         Ordering::SeqCst,
                     );
-                    data_tx.clone().send(data_to_send).map(|_| ()).map_err(
+                    data_tx.unbounded_send(data_to_send).map(|_| ()).map_err(
                         |_| (),
                     )
                 }
