@@ -73,12 +73,13 @@ fn core_adapt(
         Action::NoOp => {}
         Action::AdjustConfig(rate) => {
             profile.adjust_level(rate);
-            info!("adjusting config {:?}", action);
+            block_send(src_ctrl, AdaptSignal::ToRate(0.9 * rate));
+            info!("adjust config {:?}", action);
         }
         Action::AdvanceConfig => {
             profile.advance_level();
             block_send(src_ctrl, AdaptSignal::DecreaseDegradation);
-            info!("adjusting config {:?}", action);
+            info!("advance config {:?}", action);
         }
         Action::StartProbe => {
             let delta = profile.next_rate_delta().expect("Must not at max config");
