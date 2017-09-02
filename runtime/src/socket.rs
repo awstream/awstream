@@ -37,14 +37,7 @@ impl Sink for Socket {
     fn start_send(&mut self, item: AsDatum) -> StartSend<AsDatum, Self::SinkError> {
         self.last_item_size = item.len();
         match self.inner.start_send(item) {
-            Ok(AsyncSink::Ready) => {
-                info!(
-                    "start sending new item, add {} to the counter",
-                    self.last_item_size
-                );
-                self.bytes.fetch_add(self.last_item_size, Ordering::SeqCst);
-                Ok(AsyncSink::Ready)
-            }
+            Ok(AsyncSink::Ready) => Ok(AsyncSink::Ready),
             Ok(AsyncSink::NotReady(t)) => Ok(AsyncSink::NotReady(t)),
             Err(_e) => Err(()),
         }
@@ -53,7 +46,14 @@ impl Sink for Socket {
 
     fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
         match self.inner.poll_complete() {
-            Ok(Async::Ready(_t)) => Ok(Async::Ready(())),
+            Ok(Async::Ready(_t)) => {
+                info!(
+                    "start sending new item, add {} to the counter",
+                    self.last_item_size
+                );
+                self.bytes.fetch_add(self.last_item_size, Ordering::SeqCst);
+                Ok(Async::Ready(()))
+            }
             Ok(Async::NotReady) => Ok(Async::NotReady),
             Err(_e) => Err(()),
         }
