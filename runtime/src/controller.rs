@@ -66,7 +66,7 @@ impl Monitor {
         let produced = self.produced_bytes.swap(0, Ordering::SeqCst);
         let consumed = self.consumed_bytes.swap(0, Ordering::SeqCst);
 
-        self.queued += produced - consumed;
+        self.queued = self.queued + produced - consumed;
         self.rate.add(consumed as f64);
 
         let rate = self.rate.sum() * 8.0 / 5000.0; // rate is kbps
