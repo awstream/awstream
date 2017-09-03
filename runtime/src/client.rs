@@ -15,6 +15,7 @@ use futures::sync::mpsc::UnboundedSender;
 use std::net::SocketAddr;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
+use io;
 
 /// Run client
 pub fn run(setting: Setting) {
@@ -39,7 +40,8 @@ pub fn run(setting: Setting) {
     let (socket, out_bytes) = Socket::new(tcp);
 
     // Next, we forward all source data to socket
-    let socket_work = socket.send_all(source).map(|_| ());
+    let s = source.map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, "failed to receive"));
+    let socket_work = socket.send_all(s).map(|_| ()).map_err(|_| ());
     core.handle().spawn(socket_work);
 
     // Lastly, we create adaptation
