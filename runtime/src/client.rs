@@ -75,8 +75,9 @@ fn core_adapt(
         Action::NoOp => {}
         Action::AdjustConfig(rate) => {
             profile.adjust_level(rate);
-            block_send(src_ctrl, AdaptSignal::ToRate(0.9 * rate));
-            info!("adjust config {:?}", action);
+            let conserve_rate = 0.6 * rate;
+            block_send(src_ctrl, AdaptSignal::ToRate(conserve_rate));
+            info!("adjust config {:?}, rate: {}", action, conserve_rate);
         }
         Action::AdvanceConfig => {
             profile.advance_level();
