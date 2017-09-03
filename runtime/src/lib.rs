@@ -136,8 +136,7 @@ impl AsDatum {
             mem: data,
             len: 0,
         };
-        let len = bincode::serialized_size(&d);
-        d.len = len;
+        d.update_len();
         d
     }
 
@@ -150,11 +149,20 @@ impl AsDatum {
             mem: vec![0; size],
             len: 0,
         };
-        let len = bincode::serialized_size(&d);
-        d.len = len;
+        d.update_len();
         d
     }
 
+    fn update_len(&mut self) {
+        // effective length includes the encoding of the length itself.
+        self.len = bincode::serialized_size(self);
+    }
+
+    /// Returns the effective length (in bytes) for network transmission.
+    pub fn net_len(&self) -> usize {
+        // effective length includes the encoding of the length itself.
+        self.len as usize + mem::size_of::<u64>()
+    }
 
     /// Returns the datum type.
     pub fn datum_type(&self) -> AsDatumType {
@@ -289,11 +297,16 @@ mod tests {
     #[test]
     fn encode_decode_works() {
         let d = AsDatum::new(0, String::from("Hello").into_bytes());
+        let expected_len = d.net_len();
         let expected = d.clone();
         let mut buf = bytes::BytesMut::new();
         let mut codec = AsCodec::default();
         codec.encode(d, &mut buf).unwrap();
 
+        // Check the length is the same
+        assert_eq!(buf.len(), expected_len);
+
+        // Check that decode is succesful length
         let decoded = codec.decode(&mut buf);
         assert_eq!(decoded.unwrap().unwrap(), expected);
     }

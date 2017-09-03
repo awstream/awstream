@@ -127,7 +127,10 @@ impl TimerSource {
                     }
 
                     if let Some(p) = prober.next() {
-                        counter_clone.clone().fetch_add(p.len(), Ordering::SeqCst);
+                        counter_clone.clone().fetch_add(
+                            p.net_len(),
+                            Ordering::SeqCst,
+                        );
                         data_tx
                             .unbounded_send(p)
                             .map(|_| ())
@@ -137,9 +140,9 @@ impl TimerSource {
 
                     let level = source.current_level();
                     let data_to_send = AsDatum::new(level, vec![0; size]);
-                    info!("add new data {}", data_to_send.len());
+                    info!("add new data {}", data_to_send.net_len());
                     counter_clone.clone().fetch_add(
-                        data_to_send.len(),
+                        data_to_send.net_len(),
                         Ordering::SeqCst,
                     );
                     data_tx.unbounded_send(data_to_send).map(|_| ()).map_err(
