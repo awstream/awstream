@@ -77,7 +77,7 @@ fn core_adapt(
     match action {
         Action::NoOp => {}
         Action::AdjustConfig(rate) => {
-            let conserve_rate = 0.6 * rate;
+            let conserve_rate = 0.8 * rate;
             let level = profile.adjust_level(conserve_rate);
             block_send(src_ctrl, AdaptSignal::ToRate(conserve_rate));
             info!("adjust config, level: {:?}, rate: {}", level, conserve_rate);
@@ -89,7 +89,7 @@ fn core_adapt(
         }
         Action::StartProbe => {
             let delta = profile.next_rate_delta().expect("Must not at max config");
-            let target = 1.2 * delta;  // probe more space than strictly needed
+            let target = 1.1 * delta;  // probe more space than strictly needed
             block_send(src_ctrl, AdaptSignal::StartProbe(target));
             info!("start probing for {:?}", target);
         }

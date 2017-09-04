@@ -2,19 +2,18 @@
 
 use average::{MeanWithError, Quantile};
 
-const ALPHA: f64 = 0.8;
-
 pub struct ExponentialSmooth {
     val: f64,
+    alpha: f64,
 }
 
 impl ExponentialSmooth {
-    pub fn default() -> Self {
-        ExponentialSmooth { val: 0.0 }
+    pub fn new(alpha: f64) -> Self {
+        ExponentialSmooth { val: 0.0, alpha: alpha }
     }
 
     pub fn add(&mut self, sample: f64) {
-        self.val = self.val * ALPHA + sample * (1.0 - ALPHA);
+        self.val = self.val * self.alpha + sample * (1.0 - self.alpha);
     }
 
     pub fn val(&self) -> f64 {

@@ -30,10 +30,9 @@ pub struct Monitor {
 }
 
 /// QUEUE_EMPTY_REQUIRED * MONITOR_INTERVAL => 1 seconds for each Q_E
-const QUEUE_EMPTY_REQUIRED: usize = 20;
+const QUEUE_EMPTY_REQUIRED: usize = 5;
 
-const MONITOR_INTERVAL: u64 = 50;
-const COUNT: u64 = 5;
+const MONITOR_INTERVAL: u64 = 100;
 
 impl Monitor {
     pub fn new(
@@ -42,7 +41,7 @@ impl Monitor {
         probe_status: Arc<AtomicUsize>,
     ) -> Self {
         let timer = tokio_timer::wheel()
-            .tick_duration(Duration::from_millis(10))
+            .tick_duration(Duration::from_millis(50))
             .build()
             .interval(Duration::from_millis(MONITOR_INTERVAL));
 
@@ -51,7 +50,7 @@ impl Monitor {
             produced_bytes: producer,
             consumed_bytes: consumer,
             probe_status: probe_status,
-            rate: ExponentialSmooth::default(),
+            rate: ExponentialSmooth::new(0.5),
             queued: 0,
             empty_count: 0,
         }
@@ -67,7 +66,9 @@ impl Monitor {
         self.queued = self.queued + produced - consumed;
         self.rate.add(consumed as f64);
 
-        let rate = self.rate.val() * 8.0 / (COUNT * MONITOR_INTERVAL) as f64; // rate is kbps
+        // self.rate tracks the amount of bytes sent over the last MONITOR_INTERVAL (in ms)
+	// The division results in kbps.
+        let rate = self.rate.val() * 8.0 / (MONITOR_INTERVAL as f64);
         let latency = self.queued as f64 * 8.0 / rate; // queued is bytes
         info!(
             "queued: {:?} kbytes, rate: {:.1} kbps, latency: {:.1} ms",

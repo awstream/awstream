@@ -1,5 +1,5 @@
 server = "54.153.118.87"
 port = 8889
 
-profile_path = "/tmp/mot.profile.csv"
-source_path = "/tmp/mot.source.csv"
+profile_path = "/tmp/darknet.profile.csv"
+source_path = "/tmp/darknet.source.csv"
