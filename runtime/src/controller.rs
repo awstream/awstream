@@ -83,7 +83,7 @@ impl Monitor {
         } else {
             self.empty_count += 1;
             let probe_target = self.probe_status.load(Ordering::SeqCst);
-            if rate > probe_target as f64 {
+            if probe_target > 0 && rate > probe_target as f64 {
                 // Somehow we should make sure the rate is larger than the probe
                 // target.
                 self.probe_status.store(0, Ordering::SeqCst);

@@ -16,7 +16,7 @@ use std::net::SocketAddr;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use io;
-use net2::TcpStreamExt;
+// use net2::TcpStreamExt;
 
 /// Run client
 pub fn run(setting: Setting) {
