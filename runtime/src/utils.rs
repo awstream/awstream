@@ -2,6 +2,26 @@
 
 use average::{MeanWithError, Quantile};
 
+const ALPHA: f64 = 0.8;
+
+pub struct ExponentialSmooth {
+    val: f64,
+}
+
+impl ExponentialSmooth {
+    pub fn default() -> Self {
+        ExponentialSmooth { val: 0.0 }
+    }
+
+    pub fn add(&mut self, sample: f64) {
+        self.val = self.val * ALPHA + sample * (1.0 - ALPHA);
+    }
+
+    pub fn val(&self) -> f64 {
+        self.val
+    }
+}
+
 pub struct StreamingStat {
     buffer: Vec<f64>,
     pos: usize,

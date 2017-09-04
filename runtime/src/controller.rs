@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio_timer::{self, Interval};
-use utils::StreamingStat;
+use utils::ExponentialSmooth;
 
 pub struct Monitor {
     /// Fires to estimate outgoing bandwidth and expected latency
@@ -20,7 +20,7 @@ pub struct Monitor {
     probe_status: Arc<AtomicUsize>,
 
     /// The estimated consumption rate.
-    rate: StreamingStat,
+    rate: ExponentialSmooth,
 
     /// Queued bytes.
     queued: usize,
@@ -33,7 +33,7 @@ pub struct Monitor {
 const QUEUE_EMPTY_REQUIRED: usize = 20;
 
 const MONITOR_INTERVAL: u64 = 50;
-const COUNT: u64 = 10;
+const COUNT: u64 = 5;
 
 impl Monitor {
     pub fn new(
@@ -51,7 +51,7 @@ impl Monitor {
             produced_bytes: producer,
             consumed_bytes: consumer,
             probe_status: probe_status,
-            rate: StreamingStat::with_capacity(COUNT as usize),
+            rate: ExponentialSmooth::default(),
             queued: 0,
             empty_count: 0,
         }
@@ -67,7 +67,7 @@ impl Monitor {
         self.queued = self.queued + produced - consumed;
         self.rate.add(consumed as f64);
 
-        let rate = self.rate.sum() * 8.0 / (COUNT * MONITOR_INTERVAL) as f64; // rate is kbps
+        let rate = self.rate.val() * 8.0 / (COUNT * MONITOR_INTERVAL) as f64; // rate is kbps
         let latency = self.queued as f64 * 8.0 / rate; // queued is bytes
         info!(
             "queued: {:?} kbytes, rate: {:.1} kbps, latency: {:.1} ms",
