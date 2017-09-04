@@ -41,7 +41,7 @@ struct ProbeTracker {
     pub delta: usize,
 }
 
-const NUM_PROBE_REQUIRED: usize = 5;
+const NUM_PROBE_REQUIRED: usize = 10;
 
 impl ProbeTracker {
     fn new(tick_period: u64) -> ProbeTracker {
@@ -140,7 +140,7 @@ impl TimerSource {
 
                     let level = source.current_level();
                     let data_to_send = AsDatum::new(level, vec![0; size]);
-                    info!("add new data {}", data_to_send.net_len());
+                    info!("add new, level: {}, size: {}", level, data_to_send.net_len());
                     counter_clone.clone().fetch_add(
                         data_to_send.net_len(),
                         Ordering::SeqCst,

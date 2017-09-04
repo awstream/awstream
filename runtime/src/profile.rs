@@ -80,6 +80,7 @@ impl SimpleProfile {
     /// Finds out the required delta rate for next configuration.
     pub fn next_rate_delta(&self) -> Option<f64> {
         if self.current < self.levels.len() - 1 {
+	    trace!("calculating delta for level {}", self.current);
             Some(self.levels[self.current + 1] - self.levels[self.current])
         } else {
             None

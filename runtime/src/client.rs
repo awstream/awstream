@@ -16,6 +16,7 @@ use std::net::SocketAddr;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use io;
+use net2::TcpStreamExt;
 
 /// Run client
 pub fn run(setting: Setting) {
@@ -26,8 +27,11 @@ pub fn run(setting: Setting) {
     let handle = core.handle();
     let ip = setting.server.parse().unwrap();
     let address = SocketAddr::new(ip, setting.port);
+
     let work = TcpStream::connect(&address, &handle);
     let tcp = core.run(work).unwrap();
+    tcp.nodelay().expect("failed to set TCP NODELAY");
+    // tcp.set_send_buffer_size(64 * 1_024).expect("failed to set send buffer");
 
     let video_source = VideoSource::new(setting.source_path, setting.profile_path);
     let mut profile = video_source.simple_profile();
@@ -74,15 +78,15 @@ fn core_adapt(
     match action {
         Action::NoOp => {}
         Action::AdjustConfig(rate) => {
-            profile.adjust_level(rate);
             let conserve_rate = 0.6 * rate;
+            let level = profile.adjust_level(conserve_rate);
             block_send(src_ctrl, AdaptSignal::ToRate(conserve_rate));
-            info!("adjust config {:?}, rate: {}", action, conserve_rate);
+            info!("adjust config, level: {:?}, rate: {}", level, conserve_rate);
         }
         Action::AdvanceConfig => {
-            profile.advance_level();
+            let level = profile.advance_level();
             block_send(src_ctrl, AdaptSignal::DecreaseDegradation);
-            info!("advance config {:?}", action);
+            info!("advance config to {:?}", level);
         }
         Action::StartProbe => {
             let delta = profile.next_rate_delta().expect("Must not at max config");

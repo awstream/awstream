@@ -25,6 +25,7 @@ extern crate serde_derive;
 extern crate tokio_core;
 extern crate tokio_io;
 extern crate tokio_timer;
+extern crate net2;
 
 /// A convenience macro for working with `io::Result<T>` from the `Read` and
 /// `Write` traits.
