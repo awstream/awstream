@@ -16,7 +16,6 @@ use std::net::SocketAddr;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use io;
-// use net2::TcpStreamExt;
 
 /// Run client
 pub fn run(setting: Setting) {
@@ -30,7 +29,7 @@ pub fn run(setting: Setting) {
 
     let work = TcpStream::connect(&address, &handle);
     let tcp = core.run(work).unwrap();
-    tcp.nodelay().expect("failed to set TCP NODELAY");
+    // tcp.set_nodelay(true).expect("failed to set TCP NODELAY");
     // tcp.set_send_buffer_size(64 * 1_024).expect("failed to set send buffer");
 
     let video_source = VideoSource::new(setting.source_path, setting.profile_path);
@@ -53,7 +52,7 @@ pub fn run(setting: Setting) {
 
     // monitor is a timer task
     let monitor = Monitor::new(src_bytes, out_bytes, probe_done)
-        .skip(5)
+        .skip(1)
         .map(|signal| {
             core_adapt(signal, &mut adaptation, &mut profile, src_ctrl.clone())
         })

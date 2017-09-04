@@ -30,9 +30,10 @@ pub struct Monitor {
 }
 
 /// QUEUE_EMPTY_REQUIRED * MONITOR_INTERVAL => 1 seconds for each Q_E
-const QUEUE_EMPTY_REQUIRED: usize = 10;
+const QUEUE_EMPTY_REQUIRED: usize = 20;
 
-const MONITOR_INTERVAL: u64 = 100;
+const MONITOR_INTERVAL: u64 = 50;
+const COUNT: u64 = 10;
 
 impl Monitor {
     pub fn new(
@@ -41,19 +42,16 @@ impl Monitor {
         probe_status: Arc<AtomicUsize>,
     ) -> Self {
         let timer = tokio_timer::wheel()
-            .tick_duration(Duration::from_millis(50))
+            .tick_duration(Duration::from_millis(10))
             .build()
             .interval(Duration::from_millis(MONITOR_INTERVAL));
+
         Monitor {
             timer: timer,
             produced_bytes: producer,
             consumed_bytes: consumer,
             probe_status: probe_status,
-
-            // every 10 samples is every second, we use the estimation for the
-            // past 1 seconds
-            rate: StreamingStat::with_capacity(10 * 1),
-
+            rate: StreamingStat::with_capacity(COUNT as usize),
             queued: 0,
             empty_count: 0,
         }
@@ -69,7 +67,7 @@ impl Monitor {
         self.queued = self.queued + produced - consumed;
         self.rate.add(consumed as f64);
 
-        let rate = self.rate.sum() * 8.0 / 1000.0; // rate is kbps
+        let rate = self.rate.sum() * 8.0 / (COUNT * MONITOR_INTERVAL) as f64; // rate is kbps
         let latency = self.queued as f64 * 8.0 / rate; // queued is bytes
         info!(
             "queued: {:?} kbytes, rate: {:.1} kbps, latency: {:.1} ms",
@@ -81,14 +79,18 @@ impl Monitor {
             self.empty_count = 0;
             return Some(Signal::QueueCongest(rate, latency));
         } else {
-            self.empty_count += 1;
             let probe_target = self.probe_status.load(Ordering::SeqCst);
             if probe_target > 0 && rate > probe_target as f64 {
                 // Somehow we should make sure the rate is larger than the probe
                 // target.
                 self.probe_status.store(0, Ordering::SeqCst);
+                self.empty_count = 0;
                 return Some(Signal::ProbeDone);
-            } else if self.empty_count > QUEUE_EMPTY_REQUIRED {
+            }
+
+            self.empty_count += 1;
+            if self.empty_count > QUEUE_EMPTY_REQUIRED {
+                self.empty_count = 0;
                 return Some(Signal::QueueEmpty);
             }
         }

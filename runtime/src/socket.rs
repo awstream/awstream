@@ -39,7 +39,7 @@ impl Socket {
     }
 }
 
-const INITIAL_CAPACITY: usize = 32 * 1024;
+const INITIAL_CAPACITY: usize = 64 * 1024;
 const BACKPRESSURE_BOUNDARY: usize = INITIAL_CAPACITY;
 
 impl Sink for Socket {
@@ -62,7 +62,6 @@ impl Sink for Socket {
 
         Ok(AsyncSink::Ready)
     }
-
 
     fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
         trace!("flushing socket");
