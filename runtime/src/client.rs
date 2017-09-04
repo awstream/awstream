@@ -90,8 +90,9 @@ fn core_adapt(
         }
         Action::StartProbe => {
             let delta = profile.next_rate_delta().expect("Must not at max config");
-            block_send(src_ctrl, AdaptSignal::StartProbe(delta));
-            info!("start probing for {:?}", delta);
+            let target = 1.2 * delta;  // slight more space
+            block_send(src_ctrl, AdaptSignal::StartProbe(target));
+            info!("start probing for {:?}", target);
         }
         Action::IncreaseProbePace => {
             block_send(src_ctrl, AdaptSignal::IncreaseProbePace);

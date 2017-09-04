@@ -1,7 +1,7 @@
 use adaptation::Signal;
 use futures::{Async, Poll, Stream};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio_timer::{self, Interval};
 use utils::StreamingStat;
@@ -17,7 +17,7 @@ pub struct Monitor {
     consumed_bytes: Arc<AtomicUsize>,
 
     /// The probing status, if true, probe is done.
-    probe_status: Arc<AtomicBool>,
+    probe_status: Arc<AtomicUsize>,
 
     /// The estimated consumption rate.
     rate: StreamingStat,
@@ -38,7 +38,7 @@ impl Monitor {
     pub fn new(
         producer: Arc<AtomicUsize>,
         consumer: Arc<AtomicUsize>,
-        probe_status: Arc<AtomicBool>,
+        probe_status: Arc<AtomicUsize>,
     ) -> Self {
         let timer = tokio_timer::wheel()
             .tick_duration(Duration::from_millis(50))
@@ -82,8 +82,11 @@ impl Monitor {
             return Some(Signal::QueueCongest(rate, latency));
         } else {
             self.empty_count += 1;
-            if self.probe_status.load(Ordering::SeqCst) {
-                self.probe_status.store(false, Ordering::SeqCst);
+            let probe_target = self.probe_status.load(Ordering::SeqCst);
+            if rate > probe_target as f64 {
+                // Somehow we should make sure the rate is larger than the probe
+                // target.
+                self.probe_status.store(0, Ordering::SeqCst);
                 return Some(Signal::ProbeDone);
             } else if self.empty_count > QUEUE_EMPTY_REQUIRED {
                 return Some(Signal::QueueEmpty);

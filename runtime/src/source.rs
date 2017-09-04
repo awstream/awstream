@@ -3,7 +3,7 @@ use super::AsDatum;
 use futures::Stream;
 use futures::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio_core::reactor::Handle;
 use tokio_timer;
@@ -11,7 +11,7 @@ use tokio_timer;
 type AdaptControl = UnboundedSender<AdaptSignal>;
 type DataChannel = UnboundedReceiver<AsDatum>;
 
-pub type SourceCtrl = (AdaptControl, DataChannel, Arc<AtomicUsize>, Arc<AtomicBool>);
+pub type SourceCtrl = (AdaptControl, DataChannel, Arc<AtomicUsize>, Arc<AtomicUsize>);
 
 pub struct TimerSource;
 
@@ -41,7 +41,7 @@ struct ProbeTracker {
     pub delta: usize,
 }
 
-const NUM_PROBE_REQUIRED: usize = 10;
+const NUM_PROBE_REQUIRED: usize = 20;
 
 impl ProbeTracker {
     fn new(tick_period: u64) -> ProbeTracker {
@@ -83,6 +83,10 @@ impl ProbeTracker {
         self.delta = 0;
     }
 
+    fn target(&self) -> f64 {
+        self.target_in_kbps
+    }
+
     fn next(&self) -> Option<AsDatum> {
         if self.target_pace > 0 {
             Some(AsDatum::probe(self.pace))
@@ -115,7 +119,7 @@ impl TimerSource {
         let counter_clone = counter.clone();
 
         let mut prober = ProbeTracker::new(timer_tick);
-        let probe_done = Arc::new(AtomicBool::new(false));
+        let probe_done = Arc::new(AtomicUsize::new(0));
         let probe_done_clone = probe_done.clone();
 
         let work = timer.select(adapter).for_each(
@@ -140,7 +144,11 @@ impl TimerSource {
 
                     let level = source.current_level();
                     let data_to_send = AsDatum::new(level, vec![0; size]);
-                    info!("add new, level: {}, size: {}", level, data_to_send.net_len());
+                    info!(
+                        "add new, level: {}, size: {}",
+                        level,
+                        data_to_send.net_len()
+                    );
                     counter_clone.clone().fetch_add(
                         data_to_send.net_len(),
                         Ordering::SeqCst,
@@ -163,7 +171,10 @@ impl TimerSource {
                 }
                 Incoming::Adapt(AdaptSignal::IncreaseProbePace) => {
                     if !prober.inc_pace() {
-                        probe_done_clone.clone().store(true, Ordering::SeqCst);
+                        probe_done_clone.clone().store(
+                            prober.target() as usize,
+                            Ordering::SeqCst,
+                        );
                     }
                     Ok(())
                 }
