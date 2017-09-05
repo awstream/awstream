@@ -142,12 +142,38 @@ impl AsDatum {
     }
 
     /// Creates a new `AsDatum` object for probing.
-    pub fn probe(size: usize) -> AsDatum {
+    pub fn bw_probe(size: usize) -> AsDatum {
         let now = chrono::Utc::now();
         let mut d = AsDatum {
             t: AsDatumType::Dummy,
             ts: now,
             mem: vec![0; size],
+            len: 0,
+        };
+        d.update_len();
+        d
+    }
+
+    /// Creates a new `AsDatum` object for probing RTT.
+    pub fn latency_probe() -> AsDatum {
+        let now = chrono::Utc::now();
+        let mut d = AsDatum {
+            t: AsDatumType::LatencyProbe,
+            ts: now,
+            mem: vec![0; 0],
+            len: 0,
+        };
+        d.update_len();
+        d
+    }
+
+    /// Creates a new `AsDatum` object for acknowledgement.
+    pub fn ack() -> AsDatum {
+        let now = chrono::Utc::now();
+        let mut d = AsDatum {
+            t: AsDatumType::ReceiverCongest,
+            ts: now,
+            mem: vec![0; 0],
             len: 0,
         };
         d.update_len();
@@ -191,6 +217,8 @@ impl ::std::fmt::Display for AsDatum {
             }
             AsDatumType::Raw => write!(f, "raw data: {}", self.len),
             AsDatumType::Dummy => write!(f, "probe data: {}", self.len),
+            AsDatumType::LatencyProbe => write!(f, "probe latency"),
+            AsDatumType::ReceiverCongest => write!(f, "receiver congest"),
         }
     }
 }
@@ -198,14 +226,20 @@ impl ::std::fmt::Display for AsDatum {
 /// Datum type.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AsDatumType {
+    /// Actual live data (meaningful), with level
+    Live(usize),
+
     /// Raw data (used for online profiling).
     Raw,
 
-    /// Dummy probe packet.
+    /// Dummy (bandwidth) probe packet.
     Dummy,
 
-    /// Actual live data (meaningful), with level
-    Live(usize),
+    /// Rtt probe packet.
+    LatencyProbe,
+
+    /// Signals that the receiver detects congestion.
+    ReceiverCongest,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

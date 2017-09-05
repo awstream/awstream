@@ -9,7 +9,10 @@ pub struct ExponentialSmooth {
 
 impl ExponentialSmooth {
     pub fn new(alpha: f64) -> Self {
-        ExponentialSmooth { val: 0.0, alpha: alpha }
+        ExponentialSmooth {
+            val: 0.0,
+            alpha: alpha,
+        }
     }
 
     pub fn add(&mut self, sample: f64) {
@@ -28,6 +31,16 @@ pub struct StreamingStat {
 }
 
 impl StreamingStat {
+    pub fn new(init: f64, size: usize) -> Self {
+        assert!(init != ::std::f64::NAN);
+        assert!(size > 0);
+        StreamingStat {
+            pos: 0,
+            capacity: size,
+            buffer: vec![init; size],
+        }
+    }
+
     pub fn with_capacity(size: usize) -> Self {
         assert!(size > 0);
         StreamingStat {
@@ -38,11 +51,19 @@ impl StreamingStat {
     }
 
     pub fn add(&mut self, sample: f64) {
+        assert!(sample != ::std::f64::NAN);
         self.buffer[self.pos] = sample;
         self.pos += 1;
         if self.pos == self.capacity {
             self.pos = 0;
         }
+    }
+
+    pub fn min(&self) -> f64 {
+        *(self.buffer
+              .iter()
+              .min_by(|a, b| a.partial_cmp(b).unwrap())
+              .unwrap())
     }
 
     pub fn sum(&self) -> f64 {

@@ -89,7 +89,7 @@ impl ProbeTracker {
 
     fn next(&self) -> Option<AsDatum> {
         if self.target_pace > 0 {
-            Some(AsDatum::probe(self.pace))
+            Some(AsDatum::bw_probe(self.pace))
         } else {
             None
         }
@@ -122,9 +122,26 @@ impl TimerSource {
         let probe_done = Arc::new(AtomicUsize::new(0));
         let probe_done_clone = probe_done.clone();
 
+        let mut ticks = 0;
+        let one_second_ticks = 1000 / timer_tick;
+
         let work = timer.select(adapter).for_each(
             move |incoming| match incoming {
                 Incoming::Timer => {
+                    ticks += 1;
+
+                    // when one sec, send probe_rtt
+                    if ticks == one_second_ticks {
+                        let p = AsDatum::latency_probe();
+                        counter_clone.fetch_add(p.net_len(), Ordering::SeqCst);
+                        data_tx
+                            .unbounded_send(p)
+                            .map(|_| ())
+                            .map_err(|_| ())
+                            .expect("failed to send probing latency packet");
+                        ticks = 0;
+                    }
+
                     let size = source.next_datum();
                     if size == 0 {
                         return Ok(());
