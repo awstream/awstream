@@ -5,11 +5,11 @@ use super::{AsCodec, AsDatum};
 use bytes::BytesMut;
 use futures::{Async, AsyncSink, Poll, Sink, StartSend};
 use io;
+use std::io::Write;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio_core::net::TcpStream;
 use tokio_io::codec::Encoder;
-use std::io::Write;
 
 #[derive(Debug)]
 pub struct Socket {

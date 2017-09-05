@@ -53,6 +53,7 @@ pub mod server;
 mod socket;
 mod utils;
 mod source;
+mod interval;
 
 mod video;
 // mod receiver;
