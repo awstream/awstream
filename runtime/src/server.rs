@@ -35,12 +35,18 @@ pub fn server(port: u16) {
         let count_clone = count.clone();
 
         let process_connection = transport.for_each(move |as_datum| {
-            count.fetch_add(as_datum.len() as usize, Ordering::SeqCst);
+            let size = as_datum.len() as usize;
+            count.fetch_add(size, Ordering::SeqCst);
             match as_datum.datum_type() {
                 AsDatumType::Live(level) => {
                     let now = chrono::Utc::now();
                     let latency = time_diff_in_ms(now, as_datum.ts);
-                    info!("level: {}, latency: {:.1} ms", level, latency);
+                    info!(
+                        "level: {}, latency: {:.1} ms, size: {}",
+                        level,
+                        latency,
+                        size
+                    );
                 }
                 _ => {}
             }
