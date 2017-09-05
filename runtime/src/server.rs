@@ -7,6 +7,10 @@ use futures::{Future, Stream};
 use tokio_core::net::TcpListener;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
+use tokio_timer;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::Duration;
 
 fn time_diff_in_ms<Tz: TimeZone>(a: DateTime<Tz>, b: DateTime<Tz>) -> f64 {
     (a.timestamp() as f64 - b.timestamp() as f64) * 1000.0 +
@@ -27,7 +31,11 @@ pub fn server(port: u16) {
     let server = listener.incoming().for_each(move |(socket, _)| {
         let transport = socket.framed(AsCodec::default());
 
-        let process_connection = transport.for_each(|as_datum| {
+        let count = Arc::new(AtomicUsize::new(0));
+        let count_clone = count.clone();
+
+        let process_connection = transport.for_each(move |as_datum| {
+            count.fetch_add(as_datum.len() as usize, Ordering::SeqCst);
             match as_datum.datum_type() {
                 AsDatumType::Live(level) => {
                     let now = chrono::Utc::now();
@@ -41,6 +49,22 @@ pub fn server(port: u16) {
 
         // Spawn a new task dedicated to processing the connection
         handle.spawn(process_connection.map_err(|_| ()));
+
+        let timer = tokio_timer::wheel()
+            .tick_duration(Duration::from_millis(500))
+            .build()
+            .interval(Duration::from_millis(1000));
+        let estimate_throughput = timer.for_each(move |_| {
+            // in each tick, measure bandwidth
+            let bytes = count_clone.swap(0, Ordering::SeqCst);
+            let kbps = bytes as f64 * 8.0 / 1000.0;
+            info!("bw: {} kbps", kbps);
+            Ok(())
+        });
+
+        // Spawn a new task dedicated to processing the connection
+        handle.spawn(estimate_throughput.map_err(|_| ()));
+
         Ok(())
     });
 

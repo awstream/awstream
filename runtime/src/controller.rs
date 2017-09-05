@@ -66,8 +66,8 @@ impl Monitor {
         self.queued = self.queued + produced - consumed;
         self.rate.add(consumed as f64);
 
-        // self.rate tracks the amount of bytes sent over the last MONITOR_INTERVAL (in ms)
-	// The division results in kbps.
+        // self.rate tracks the amount of bytes sent over the last
+        // MONITOR_INTERVAL (in ms). The division results in kbps.
         let rate = self.rate.val() * 8.0 / (MONITOR_INTERVAL as f64);
         let latency = self.queued as f64 * 8.0 / rate; // queued is bytes
         info!(
