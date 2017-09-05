@@ -131,10 +131,7 @@ impl TimerSource {
                     }
 
                     if let Some(p) = prober.next() {
-                        counter_clone.clone().fetch_add(
-                            p.net_len(),
-                            Ordering::SeqCst,
-                        );
+                        counter_clone.fetch_add(p.net_len(), Ordering::SeqCst);
                         data_tx
                             .unbounded_send(p)
                             .map(|_| ())
@@ -145,10 +142,7 @@ impl TimerSource {
                     let level = source.current_level();
                     let data_to_send = AsDatum::new(level, vec![0; size]);
                     info!("add new, level: {}, size: {}", level, size);
-                    counter_clone.clone().fetch_add(
-                        data_to_send.net_len(),
-                        Ordering::SeqCst,
-                    );
+                    counter_clone.fetch_add(data_to_send.net_len(), Ordering::SeqCst);
                     data_tx.unbounded_send(data_to_send).map(|_| ()).map_err(
                         |_| (),
                     )
@@ -167,14 +161,12 @@ impl TimerSource {
                 }
                 Incoming::Adapt(AdaptSignal::IncreaseProbePace) => {
                     if !prober.inc_pace() {
-                        probe_done_clone.clone().store(
-                            prober.target() as usize,
-                            Ordering::SeqCst,
-                        );
+                        probe_done.store(prober.target() as usize, Ordering::SeqCst);
                     }
                     Ok(())
                 }
                 Incoming::Adapt(AdaptSignal::StopProbe) => {
+                    probe_done.store(0, Ordering::SeqCst);
                     prober.stop_probe();
                     Ok(())
                 }
@@ -182,6 +174,6 @@ impl TimerSource {
         );
         handle.spawn(work);
 
-        (adapt_tx, data_rx, counter.clone(), probe_done)
+        (adapt_tx, data_rx, counter.clone(), probe_done_clone)
     }
 }
