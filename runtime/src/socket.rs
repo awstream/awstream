@@ -39,7 +39,7 @@ impl Socket {
     }
 }
 
-const INITIAL_CAPACITY: usize = 64 * 1024;
+const INITIAL_CAPACITY: usize = 32 * 1_024;
 const BACKPRESSURE_BOUNDARY: usize = INITIAL_CAPACITY;
 
 impl Sink for Socket {

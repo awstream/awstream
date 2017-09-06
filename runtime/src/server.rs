@@ -77,7 +77,7 @@ fn handle_connection(socket: TcpStream, handle: &Handle) -> Result<()> {
                     let now = chrono::Utc::now();
                     let latency = time_diff_in_ms(now, as_datum.ts);
 
-                    if latency > 10.0 * min_latency.min() && latency > 10.0 {
+                    if latency > 20.0 * min_latency.min() && latency > 10.0 {
                         info!("reporting latency spikes {}", min_latency.min());
                         let report =
                             ReceiverReport::new(latency, goodput2.rate(), throughput2.rate());
