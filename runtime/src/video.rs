@@ -65,7 +65,7 @@ impl VideoSource {
         }
 
         let p = Profile::new(profile);
-        let init = p.last_config();
+        let init = p.init_config();
         VideoSource {
             map: map,
             frame: 1,
