@@ -1,14 +1,13 @@
 //! The main entrance for server functionality.
 
 use super::{AsCodec, AsDatum, AsDatumType, ReceiverReport};
+use super::bw_monitor::BwMonitor;
 use super::utils::StreamingStat;
 use chrono;
 use chrono::{DateTime, TimeZone};
 use futures::{Future, Sink, Stream};
 use interval;
 use io::Result;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio_core::net::{TcpListener, TcpStream};
 use tokio_core::reactor::{Core, Handle};
@@ -42,24 +41,22 @@ pub fn server(port: u16) {
 /// The main server logic that handles a particular socket.
 fn handle_connection(socket: TcpStream, handle: &Handle) -> Result<()> {
     let transport = socket.framed(AsCodec::default());
-    let live_counter = Arc::new(AtomicUsize::new(0));
-    let live_counter_clone = live_counter.clone();
-    let dummy_counter = Arc::new(AtomicUsize::new(0));
-    let dummy_counter_clone = dummy_counter.clone();
+
+    let mut goodput = BwMonitor::new();
+    let mut goodput2 = goodput.clone();
+    let mut throughput = BwMonitor::new();
+    let mut throughput2 = throughput.clone();
 
     let timer = tokio_timer::Timer::default();
     let (ticks, tick_stopper) = interval::new(timer, Duration::from_millis(1000));
 
     let estimate_throughput = ticks.for_each(move |_| {
         // in each tick, measure bandwidth
-        let live_bytes = live_counter_clone.swap(0, Ordering::SeqCst);
-        let dummy_bytes = dummy_counter_clone.swap(0, Ordering::SeqCst);
-        let live_kbps = live_bytes as f64 * 8.0 / 1000.0;
-        let dummy_kbps = dummy_bytes as f64 * 8.0 / 1000.0;
+        goodput.update(1000);
+        throughput.update(1000);
         info!(
             "goodput: {} kbps, throughput: {} kbps",
-            live_kbps,
-            live_kbps + dummy_kbps
+            goodput.rate(), throughput.rate(),
         );
         Ok(())
     });
@@ -75,14 +72,15 @@ fn handle_connection(socket: TcpStream, handle: &Handle) -> Result<()> {
             match as_datum.datum_type() {
                 AsDatumType::Live(level) => {
                     let size = as_datum.len() as usize;
-                    live_counter.fetch_add(size, Ordering::SeqCst);
+                    goodput2.add(size);
 
                     let now = chrono::Utc::now();
                     let latency = time_diff_in_ms(now, as_datum.ts);
 
-                    if latency > 10.0 * min_latency.min() {
+                    if latency > 10.0 * min_latency.min() && latency > 10.0 {
                         info!("reporting latency spikes {}", min_latency.min());
-                        let report = ReceiverReport::new(latency, 0.0, 0.0);
+                        let report =
+                            ReceiverReport::new(latency, goodput2.rate(), throughput2.rate());
                         transport_write.start_send(AsDatum::ack(report)).expect(
                             "failed to write back",
                         );
@@ -97,10 +95,7 @@ fn handle_connection(socket: TcpStream, handle: &Handle) -> Result<()> {
                         size
                     );
                 }
-                AsDatumType::Dummy => {
-                    let size = as_datum.len() as usize;
-                    dummy_counter.fetch_add(size, Ordering::SeqCst);
-                }
+                AsDatumType::Dummy => {}
                 AsDatumType::LatencyProbe => {
                     let now = chrono::Utc::now();
                     let latency = time_diff_in_ms(now, as_datum.ts);
@@ -109,6 +104,8 @@ fn handle_connection(socket: TcpStream, handle: &Handle) -> Result<()> {
                 }
                 _ => {}
             }
+            let size = as_datum.len() as usize;
+            throughput2.add(size);
             Ok(())
         })
         .map_err(|_| ());

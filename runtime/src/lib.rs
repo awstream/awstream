@@ -54,7 +54,7 @@ mod socket;
 mod utils;
 mod source;
 mod interval;
-
+mod bw_monitor;
 mod video;
 // mod receiver;
 // mod analytics;
