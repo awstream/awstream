@@ -164,10 +164,12 @@ impl TimerSource {
                     )
                 }
                 Incoming::Adapt(AdaptAction::ToRate(rate)) => {
+                    prober.stop_probe();
                     source.adapt(rate);
                     Ok(())
                 }
                 Incoming::Adapt(AdaptAction::DecreaseDegradation) => {
+                    prober.stop_probe();
                     source.dec_degradation();
                     Ok(())
                 }
