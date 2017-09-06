@@ -1,6 +1,6 @@
 //! The main entrance for server functionality.
 
-use super::{AsCodec, AsDatum, AsDatumType};
+use super::{AsCodec, AsDatum, AsDatumType, ReceiverReport};
 use super::utils::StreamingStat;
 use chrono;
 use chrono::{DateTime, TimeZone};
@@ -39,6 +39,7 @@ pub fn server(port: u16) {
     core.run(server).unwrap();
 }
 
+/// The main server logic that handles a particular socket.
 fn handle_connection(socket: TcpStream, handle: &Handle) -> Result<()> {
     let transport = socket.framed(AsCodec::default());
     let live_counter = Arc::new(AtomicUsize::new(0));
@@ -81,7 +82,8 @@ fn handle_connection(socket: TcpStream, handle: &Handle) -> Result<()> {
 
                     if latency > 10.0 * min_latency.min() {
                         info!("reporting latency spikes {}", min_latency.min());
-                        transport_write.start_send(AsDatum::ack()).expect(
+                        let report = ReceiverReport::new(latency, 0.0, 0.0);
+                        transport_write.start_send(AsDatum::ack(report)).expect(
                             "failed to write back",
                         );
                         transport_write.poll_complete().expect(

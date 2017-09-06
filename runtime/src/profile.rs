@@ -249,7 +249,14 @@ mod tests {
         assert_eq!(profile.init_config().v, 0);
         assert_eq!(profile.last_config().v, 3);
         assert_eq!(profile.current_config().v, 0);
-        assert_eq!(profile.adjust_config(4.0).unwrap().config.v, 3);
+        assert!(profile.advance_config().is_some());
+        assert!(profile.advance_config().is_some());
+        assert_eq!(profile.current_config().v, 2);
+
+        // cannot adjust to a higher config
+        assert!(profile.adjust_config(4.0).is_none());
+
+        // can adjust to a higher config
         assert_eq!(profile.adjust_config(1.5).unwrap().config.v, 1);
     }
 

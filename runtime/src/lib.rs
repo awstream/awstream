@@ -67,8 +67,8 @@ use std::io::{self, Cursor};
 use std::mem;
 use tokio_io::codec::{Decoder, Encoder};
 
-/// Signals about adaptation actions
-pub enum AdaptSignal {
+/// Actions for adaptation.
+pub enum AdaptAction {
     /// Adapts to a designated bandwidth in kbps.
     ToRate(f64),
 
@@ -168,12 +168,12 @@ impl AsDatum {
     }
 
     /// Creates a new `AsDatum` object for acknowledgement.
-    pub fn ack() -> AsDatum {
+    pub fn ack(rr: ReceiverReport) -> AsDatum {
         let now = chrono::Utc::now();
         let mut d = AsDatum {
             t: AsDatumType::ReceiverCongest,
             ts: now,
-            mem: vec![0; 0],
+            mem: rr.to_mem(),
             len: 0,
         };
         d.update_len();
@@ -240,6 +240,35 @@ pub enum AsDatumType {
 
     /// Signals that the receiver detects congestion.
     ReceiverCongest,
+}
+
+#[derive(Serialize, Deserialize)]
+/// Statistics report from the receiver side.
+pub struct ReceiverReport {
+    latency: f64,
+    goodput: f64,
+    throughput: f64,
+}
+
+impl ReceiverReport {
+    /// Creates
+    pub fn new(latency: f64, goodput: f64, throughput: f64) -> Self {
+        ReceiverReport {
+            latency: latency,
+            goodput: goodput,
+            throughput: throughput,
+        }
+    }
+
+    /// Decode from memory
+    pub fn from_mem(mem: &Vec<u8>) -> ReceiverReport {
+        bincode::deserialize(&mem[..]).unwrap()
+    }
+
+    /// Encode into memory
+    pub fn to_mem(&self) -> Vec<u8> {
+        bincode::serialize(&self, bincode::Infinite).unwrap()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

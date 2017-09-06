@@ -9,8 +9,14 @@ pub enum Signal {
     /// Queue is empty, try to be aggressive.
     QueueEmpty,
 
+    /// Congestion signal from the remote.
+    RemoteCongest(f64, f64),
+
+    /// Probe done
     ProbeDone,
 }
+
+pub struct AdaptationController;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Action {
@@ -63,12 +69,14 @@ impl Adaptation {
                 self.state = State::Steady;
                 Action::NoOp
             }
-            (State::Startup, Signal::QueueCongest(rate, _latency), _) => {
+            (State::Startup, Signal::QueueCongest(rate, _latency), _) |
+            (State::Startup, Signal::RemoteCongest(rate, _latency), _) => {
                 // transition 3
                 self.state = State::Degrade;
                 Action::AdjustConfig(rate)
             }
-            (State::Degrade, Signal::QueueCongest(rate, _latency), _) => {
+            (State::Degrade, Signal::QueueCongest(rate, _latency), _) |
+            (State::Degrade, Signal::RemoteCongest(rate, _latency), _) => {
                 // transition 4
                 self.state = State::Degrade;
                 Action::AdjustConfig(rate)
@@ -78,7 +86,8 @@ impl Adaptation {
                 self.state = State::Steady;
                 Action::NoOp
             }
-            (State::Steady, Signal::QueueCongest(rate, _latency), _) => {
+            (State::Steady, Signal::QueueCongest(rate, _latency), _) |
+            (State::Steady, Signal::RemoteCongest(rate, _latency), _) => {
                 // transition 6
                 self.state = State::Degrade;
                 Action::AdjustConfig(rate)
@@ -88,7 +97,8 @@ impl Adaptation {
                 self.state = State::Probe;
                 Action::StartProbe
             }
-            (State::Probe, Signal::QueueCongest(_rate, _latency), _) => {
+            (State::Probe, Signal::QueueCongest(_rate, _latency), _) |
+            (State::Probe, Signal::RemoteCongest(_rate, _latency), _) => {
                 // transtion 8
                 self.state = State::Steady;
                 Action::StopProbe

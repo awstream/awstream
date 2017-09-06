@@ -1,4 +1,4 @@
-use super::{Adapt, AdaptSignal, Experiment};
+use super::{Adapt, AdaptAction, Experiment};
 use super::AsDatum;
 use futures::Stream;
 use futures::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
@@ -8,10 +8,10 @@ use std::time::Duration;
 use tokio_core::reactor::Handle;
 use tokio_timer;
 
-type AdaptControl = UnboundedSender<AdaptSignal>;
+type AdaptControl = UnboundedSender<AdaptAction>;
 type DataChannel = UnboundedReceiver<AsDatum>;
 
-pub type SourceCtrl = (AdaptControl, DataChannel, Arc<AtomicUsize>, Arc<AtomicUsize>);
+pub type SourceCtrl = (AdaptControl, DataChannel, Arc<AtomicUsize>, UnboundedReceiver<f64>);
 
 pub struct TimerSource;
 
@@ -98,7 +98,7 @@ impl ProbeTracker {
 
 enum Incoming {
     Timer,
-    Adapt(AdaptSignal),
+    Adapt(AdaptAction),
 }
 
 impl TimerSource {
@@ -119,8 +119,7 @@ impl TimerSource {
         let counter_clone = counter.clone();
 
         let mut prober = ProbeTracker::new(timer_tick);
-        let probe_done = Arc::new(AtomicUsize::new(0));
-        let probe_done_clone = probe_done.clone();
+        let (probe_tx, probe_rx) = unbounded();
 
         let mut ticks = 0;
         let one_second_ticks = 1000 / timer_tick;
@@ -164,26 +163,25 @@ impl TimerSource {
                         |_| (),
                     )
                 }
-                Incoming::Adapt(AdaptSignal::ToRate(rate)) => {
+                Incoming::Adapt(AdaptAction::ToRate(rate)) => {
                     source.adapt(rate);
                     Ok(())
                 }
-                Incoming::Adapt(AdaptSignal::DecreaseDegradation) => {
+                Incoming::Adapt(AdaptAction::DecreaseDegradation) => {
                     source.dec_degradation();
                     Ok(())
                 }
-                Incoming::Adapt(AdaptSignal::StartProbe(target_in_kbps)) => {
+                Incoming::Adapt(AdaptAction::StartProbe(target_in_kbps)) => {
                     prober.start_probe(target_in_kbps);
                     Ok(())
                 }
-                Incoming::Adapt(AdaptSignal::IncreaseProbePace) => {
+                Incoming::Adapt(AdaptAction::IncreaseProbePace) => {
                     if !prober.inc_pace() {
-                        probe_done.store(prober.target() as usize, Ordering::SeqCst);
+                        probe_tx.unbounded_send(prober.target()).unwrap();
                     }
                     Ok(())
                 }
-                Incoming::Adapt(AdaptSignal::StopProbe) => {
-                    probe_done.store(0, Ordering::SeqCst);
+                Incoming::Adapt(AdaptAction::StopProbe) => {
                     prober.stop_probe();
                     Ok(())
                 }
@@ -191,6 +189,6 @@ impl TimerSource {
         );
         handle.spawn(work);
 
-        (adapt_tx, data_rx, counter.clone(), probe_done_clone)
+        (adapt_tx, data_rx, counter.clone(), probe_rx)
     }
 }
