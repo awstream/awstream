@@ -24,6 +24,10 @@ pub struct Monitor {
 
     /// Empty counts.
     empty_count: usize,
+
+    /// Remembers if timer has fired or not. We delay `react_to_timer` to avoid
+    /// the race with `socket`.
+    timer_fired: bool,
 }
 
 /// QUEUE_EMPTY_REQUIRED * MONITOR_INTERVAL => 1 seconds for each Q_E
@@ -45,6 +49,7 @@ impl Monitor {
             rate: ExponentialSmooth::new(0.5),
             queued: 0,
             empty_count: 0,
+            timer_fired: false,
         }
     }
 
@@ -93,12 +98,19 @@ impl Stream for Monitor {
         // a monitor event. This follows the implementation of
         // `futures::Stream::filter`.
         loop {
+            if self.timer_fired {
+                self.timer_fired = false;
+                match self.react_to_timer() {
+                    Some(s) => return Ok(Async::Ready(Some(s))),
+                    None => {}
+                }
+            }
             match try_ready!(self.timer.poll()) {
                 Some(_t) => {
-                    match self.react_to_timer() {
-                        Some(s) => return Ok(Async::Ready(Some(s))),
-                        None => {}
-                    }
+                    self.timer_fired = true;
+                    let task = ::futures::task::current();
+                    task.notify();
+                    return Ok(Async::NotReady);
                 }
                 None => {
                     return Ok(Async::Ready(None));
