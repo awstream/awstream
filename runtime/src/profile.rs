@@ -57,6 +57,7 @@ impl SimpleProfile {
         // Only if new level is more conservative
         if self.current > new_level {
             self.current = new_level;
+            self.adjust_sticky_count = ADJUST_STICKY_MAX;
             Some(new_level)
         } else if self.current == new_level {
             if self.adjust_sticky_count == 0 {
