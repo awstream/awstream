@@ -19,7 +19,6 @@ use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
 
-const ALPHA_RATE: f64 = 0.9;
 const PROBE_EXTRA: f64 = 1.05;
 
 fn connect(server: &str, port: u16, core: &mut Core) -> Result<TcpStream> {
@@ -112,7 +111,6 @@ fn core_adapt(
     match action {
         Action::NoOp => {}
         Action::AdjustConfig(rate) => {
-            let rate = ALPHA_RATE * rate;
             let level = profile.adjust_level(rate);
             block_send(src_ctrl, AdaptAction::ToRate(rate));
             info!("adjust config, level: {:?}, rate: {}", level, rate);

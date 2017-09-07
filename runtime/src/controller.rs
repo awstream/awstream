@@ -1,11 +1,13 @@
-use errors::*;
 use adaptation::Signal;
+use errors::*;
 use futures::{Async, Poll, Stream};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio_timer::{self, Interval};
 use utils::ExponentialSmooth;
+
+const ALPHA_RATE: f64 = 0.9;
 
 pub struct Monitor {
     /// Fires to estimate outgoing bandwidth and expected latency
@@ -76,7 +78,7 @@ impl Monitor {
         );
         if latency > 1.0 {
             self.empty_count = 0;
-            return Some(Signal::QueueCongest(rate, latency));
+            return Some(Signal::QueueCongest(ALPHA_RATE * rate, latency));
         } else {
             self.empty_count += 1;
             if self.empty_count > QUEUE_EMPTY_REQUIRED {

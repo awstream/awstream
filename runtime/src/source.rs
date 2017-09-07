@@ -1,6 +1,6 @@
 use super::{Adapt, AdaptAction, Experiment};
-use super::adaptation::Signal;
 use super::AsDatum;
+use super::adaptation::Signal;
 use futures::Stream;
 use futures::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use std::sync::Arc;
