@@ -16,18 +16,19 @@ use futures::sync::mpsc::UnboundedSender;
 use futures::{Future, Sink, Stream};
 use std::net::SocketAddr;
 use tokio_core::net::TcpStream;
-use tokio_core::reactor::{Core, Handle};
+use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
 
 const ALPHA_RATE: f64 = 0.9;
 const PROBE_EXTRA: f64 = 1.05;
 
-fn connect(server: &str, port: u16, handle: Handle) -> Result<TcpStream> {
+fn connect(server: &str, port: u16, core: &mut Core) -> Result<TcpStream> {
+    let handle = core.handle();
     let ip = server.parse().unwrap();
     let address = SocketAddr::new(ip, port);
 
     let work = TcpStream::connect(&address, &handle);
-    let tcp = work.wait()?;
+    let tcp = core.run(work)?;
     // tcp.set_nodelay(true).expect("failed to set TCP NODELAY");
     // tcp.set_send_buffer_size(64 * 1_024).expect("failed to set send buffer");
     Ok(tcp)
@@ -39,7 +40,8 @@ pub fn run(setting: Setting) -> Result<()> {
     let mut core = Core::new().unwrap();
 
     // Creates the TCP connection (this is synchronous!)
-    let tcp = connect(&setting.server, setting.port, core.handle())?;
+    let tcp = connect(&setting.server, setting.port, &mut core)?;
+    info!("conected to server: {}:{}", setting.server, setting.port);
 
     let video_source = VideoSource::new(setting.source_path, setting.profile_path);
     let mut profile = video_source.simple_profile();
