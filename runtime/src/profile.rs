@@ -13,6 +13,8 @@ pub struct Record<C> {
     _accuracy: f64,
 }
 
+const ADJUST_STICKY_MAX: usize = 3;
+
 /// A `SimpleProfile` isn't parameterized by the config.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SimpleProfile {
@@ -21,6 +23,9 @@ pub struct SimpleProfile {
 
     /// The current config (serving as cache)
     current: usize,
+
+    /// How many times we can stick to current without degrading.
+    adjust_sticky_count: usize,
 }
 
 impl SimpleProfile {
@@ -53,6 +58,15 @@ impl SimpleProfile {
         if self.current > new_level {
             self.current = new_level;
             Some(new_level)
+        } else if self.current == new_level {
+            if self.adjust_sticky_count == 0 {
+                // we've done enough sticky actions, decrease one level
+                self.adjust_sticky_count = ADJUST_STICKY_MAX;
+                self.decrease_level()
+            } else {
+                self.adjust_sticky_count -= 1;
+                None
+            }
         } else {
             None
         }
@@ -63,6 +77,17 @@ impl SimpleProfile {
     pub fn advance_level(&mut self) -> Option<usize> {
         if self.current < self.levels.len() - 1 {
             self.current += 1;
+            Some(self.current)
+        } else {
+            None
+        }
+    }
+
+    /// Advances to next config. Returns the record if successful; otherwise,
+    /// return None (when we cannot advance any more).
+    pub fn decrease_level(&mut self) -> Option<usize> {
+        if self.current > 0 {
+            self.current -= 1;
             Some(self.current)
         } else {
             None
@@ -142,6 +167,7 @@ impl<C> Profile<C> {
         let simple_profile = SimpleProfile {
             levels: simple,
             current: 0,
+            adjust_sticky_count: ADJUST_STICKY_MAX,
         };
         Profile {
             records: vec,
@@ -210,6 +236,7 @@ impl<C: DeserializeOwned + Copy + Debug> Profile<C> {
             simple_profile: SimpleProfile {
                 levels: simple,
                 current: 0,
+                adjust_sticky_count: ADJUST_STICKY_MAX,
             },
         }
     }
@@ -264,5 +291,21 @@ mod tests {
         assert_eq!(profile.last_config().v, 0);
         assert_eq!(profile.current_config().v, 0);
         assert!(profile.adjust_config(1.5).is_none());
+    }
+
+    #[test]
+    fn test_profile_stickiness() {
+        let mut profile = create_profile(4);
+        assert!(profile.advance_config().is_some());
+        assert!(profile.advance_config().is_some());
+        assert_eq!(profile.current_config().v, 2);
+
+        // sticks to current config for ADJUST_STICKY_MAX times
+        for _ in 0..ADJUST_STICKY_MAX {
+            assert!(profile.adjust_config(2.1).is_none());
+            assert_eq!(profile.current_config().v, 2);
+        }
+
+        assert_eq!(profile.adjust_config(2.1).unwrap().config.v, 1);
     }
 }

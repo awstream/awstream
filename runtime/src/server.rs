@@ -136,7 +136,7 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
             latency,
             datum.len()
         );
-        if latency > 20.0 * self.min_latency.min() && latency > 10.0 {
+        if latency > 10.0 * self.min_latency.min() && latency > 10.0 {
             let time_since_last_report = time_diff_in_ms(now, self.last_report_time);
             if time_since_last_report > 500.0 {
                 self.last_report_time = now;
