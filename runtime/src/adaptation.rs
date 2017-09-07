@@ -41,15 +41,22 @@ enum State {
 
 pub struct Adaptation {
     state: State,
+    steady_count: usize,
 }
 
 impl Default for Adaptation {
     fn default() -> Adaptation {
-        Adaptation { state: State::Startup }
+        Adaptation {
+            state: State::Startup,
+            steady_count: 0,
+        }
     }
 }
 
 impl Adaptation {
+    /// Only start probing if we are steady enough (that is, enough Q_E).
+    const STEADY_ENOUGH: usize = 5;
+
     pub fn transit(&mut self, signal: Signal, max_config: bool) -> Action {
         info!(
             "state: {:?}, signal: {:?}, max?: {}",
@@ -87,13 +94,20 @@ impl Adaptation {
             (State::Steady, Signal::QueueCongest(rate, _latency), _) |
             (State::Steady, Signal::RemoteCongest(rate, _latency), _) => {
                 // transition 6
+                self.steady_count = 0;
                 self.state = State::Degrade;
                 Action::AdjustConfig(rate)
             }
             (State::Steady, Signal::QueueEmpty, false) => {
                 // transition 7
-                self.state = State::Probe;
-                Action::StartProbe
+                if self.steady_count > Adaptation::STEADY_ENOUGH {
+                    self.steady_count = 0;
+                    self.state = State::Probe;
+                    Action::StartProbe
+                } else {
+                    self.steady_count += 1;
+                    Action::NoOp
+                }
             }
             (State::Probe, Signal::QueueCongest(_rate, _latency), _) |
             (State::Probe, Signal::RemoteCongest(_rate, _latency), _) => {
