@@ -1,6 +1,7 @@
 //! Socket implements `Sink` trait that can keep track of the delivered bytes
 //! for bandwidth estimation.
 
+use errors::*;
 use super::{AsCodec, AsDatum};
 use bytes::BytesMut;
 use futures::{Async, AsyncSink, Poll, Sink, StartSend, Stream};
@@ -44,9 +45,9 @@ const BACKPRESSURE_BOUNDARY: usize = INITIAL_CAPACITY;
 
 impl Sink for Socket {
     type SinkItem = AsDatum;
-    type SinkError = io::Error;
+    type SinkError = Error;
 
-    fn start_send(&mut self, item: AsDatum) -> StartSend<AsDatum, Self::SinkError> {
+    fn start_send(&mut self, item: AsDatum) -> StartSend<AsDatum, Error> {
         // If the buffer is already over 8KiB, then attempt to flush it. If
         // after flushing it's *still* over 8KiB, then apply backpressure
         // (reject the send).

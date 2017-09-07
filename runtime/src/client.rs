@@ -2,6 +2,7 @@
 //! event loop (`tokio_core::Core`). The loop selects the next available event
 //! and reacts accordingly.
 
+use super::errors::*;
 use super::{Adapt, AdaptAction, AsCodec, ReceiverReport};
 use super::adaptation::{Action, Adaptation, Signal};
 use super::controller::Monitor;
@@ -13,11 +14,13 @@ use super::video::VideoSource;
 
 use futures::sync::mpsc::UnboundedSender;
 use futures::{Future, Sink, Stream};
-use io;
 use std::net::SocketAddr;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
+
+const ALPHA_RATE: f64 = 0.9;
+const PROBE_EXTRA: f64 = 1.05;
 
 /// Run client
 pub fn run(setting: Setting) {
@@ -37,44 +40,48 @@ pub fn run(setting: Setting) {
     let video_source = VideoSource::new(setting.source_path, setting.profile_path);
     let mut profile = video_source.simple_profile();
 
-    // First we create source
-    let handle = core.handle();
-    let (src_ctrl, source, src_bytes, probe_done) = TimerSource::spawn(video_source, handle);
+    /////////////////////////////////////////////////////////////////
+    //
+    // Data Plane
+    //
+    /////////////////////////////////////////////////////////////////
 
-    // Then we create sink (socket)
+    // 1. Creates source
+    let handle = core.handle();
+    let (src_ctrl, src_data, src_stat) = TimerSource::spawn(video_source, handle);
+
+    // 2. Creates sink (socket)
     let (tcp_read, tcp_write) = tcp.split();
     let (socket, out_bytes) = Socket::new(tcp_write);
 
-    // Next, we forward all source data to socket
-    let s = source.map_err(|_| {
-        io::Error::new(io::ErrorKind::BrokenPipe, "failed to receive")
-    });
+    // 3. Forward all source data to socket
+    let s = src_data.map_err(|_| Error::from_kind(ErrorKind::SourceDataErr));
     let socket_work = socket.send_all(s).map(|_| ()).map_err(|_| ());
     core.handle().spawn(socket_work);
 
-    // Lastly, we create adaptation
+    //////////////////////////////////////////////////////////////////
+    //
+    //  Control Plane
+    //
+    //////////////////////////////////////////////////////////////////
     let mut adaptation = Adaptation::default();
 
-    //////////////////////////////////////////////////////////////////
-    //
-    //  Merge three different streams
-    //
-    //////////////////////////////////////////////////////////////////
     let remote = FramedRead::new(tcp_read, AsCodec::default())
         .map(|as_datum| {
             let report = ReceiverReport::from_mem(&as_datum.mem);
             Signal::RemoteCongest(report.throughput, report.latency)
         })
-        .map_err(|_| ());
+        .map_err(|_| Error::from_kind(ErrorKind::RemotePeer));
 
-    let monitor = Monitor::new(src_bytes, out_bytes).skip(1);
-    let probing = probe_done.map(|_| Signal::ProbeDone);
+    let (src_tx, src_rx) = src_ctrl;
+    let monitor = Monitor::new(src_stat, out_bytes).skip(1);
+    let probing = src_rx.map_err(|_| Error::from_kind(ErrorKind::RemotePeer));
 
     let work = monitor
         .select(probing)
         .select(remote)
         .for_each(|signal| {
-            core_adapt(signal, &mut adaptation, &mut profile, src_ctrl.clone());
+            core_adapt(signal, &mut adaptation, &mut profile, src_tx.clone());
             Ok(())
         })
         .map_err(|_| ());
@@ -97,10 +104,10 @@ fn core_adapt(
     match action {
         Action::NoOp => {}
         Action::AdjustConfig(rate) => {
-            let conserve_rate = 0.9 * rate;
-            let level = profile.adjust_level(conserve_rate);
-            block_send(src_ctrl, AdaptAction::ToRate(conserve_rate));
-            info!("adjust config, level: {:?}, rate: {}", level, conserve_rate);
+            let rate = ALPHA_RATE * rate;
+            let level = profile.adjust_level(rate);
+            block_send(src_ctrl, AdaptAction::ToRate(rate));
+            info!("adjust config, level: {:?}, rate: {}", level, rate);
         }
         Action::AdvanceConfig => {
             let level = profile.advance_level();
@@ -109,7 +116,7 @@ fn core_adapt(
         }
         Action::StartProbe => {
             let delta = profile.next_rate_delta().expect("Must not at max config");
-            let target = 1.05 * delta; // probe more space than strictly needed
+            let target = PROBE_EXTRA * delta; // probe more space than needed
             block_send(src_ctrl, AdaptAction::StartProbe(target));
             info!("start probing for {:?}", target);
         }

@@ -1,4 +1,5 @@
 use super::{Adapt, AdaptAction, Experiment};
+use super::adaptation::Signal;
 use super::AsDatum;
 use futures::Stream;
 use futures::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
@@ -8,10 +9,11 @@ use std::time::Duration;
 use tokio_core::reactor::Handle;
 use tokio_timer;
 
-type AdaptControl = UnboundedSender<AdaptAction>;
-type DataChannel = UnboundedReceiver<AsDatum>;
+type SourceCtrl = (UnboundedSender<AdaptAction>, UnboundedReceiver<Signal>);
+type SourceData = UnboundedReceiver<AsDatum>;
+type SourceStat = Arc<AtomicUsize>;
 
-pub type SourceCtrl = (AdaptControl, DataChannel, Arc<AtomicUsize>, UnboundedReceiver<f64>);
+pub type Source = (SourceCtrl, SourceData, SourceStat);
 
 pub struct TimerSource;
 
@@ -83,10 +85,6 @@ impl ProbeTracker {
         self.delta = 0;
     }
 
-    fn target(&self) -> f64 {
-        self.target_in_kbps
-    }
-
     fn next(&self) -> Option<AsDatum> {
         if self.target_pace > 0 {
             Some(AsDatum::bw_probe(self.pace))
@@ -102,7 +100,10 @@ enum Incoming {
 }
 
 impl TimerSource {
-    pub fn spawn<As: Adapt + Experiment + 'static>(mut source: As, handle: Handle) -> SourceCtrl {
+    pub fn spawn<As>(mut source: As, handle: Handle) -> Source
+    where
+        As: Adapt + Experiment + 'static,
+    {
         let timer_tick = source.period_in_ms();
         let timer = tokio_timer::wheel()
             .tick_duration(Duration::from_millis(1))
@@ -179,7 +180,7 @@ impl TimerSource {
                 }
                 Incoming::Adapt(AdaptAction::IncreaseProbePace) => {
                     if !prober.inc_pace() {
-                        probe_tx.unbounded_send(prober.target()).unwrap();
+                        probe_tx.unbounded_send(Signal::ProbeDone).unwrap();
                     }
                     Ok(())
                 }
@@ -191,6 +192,6 @@ impl TimerSource {
         );
         handle.spawn(work);
 
-        (adapt_tx, data_rx, counter.clone(), probe_rx)
+        ((adapt_tx, probe_rx), data_rx, counter.clone())
     }
 }

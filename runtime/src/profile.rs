@@ -113,6 +113,21 @@ impl<C: Copy> Profile<C> {
             .config
     }
 
+    /// Returns the last configuration (we will simply take the last).
+    #[allow(dead_code)]
+    fn last_config(&self) -> C {
+        self.records
+            .last()
+            .expect("no configuration in profile")
+            .config
+    }
+
+    /// Returns the current configuration
+    #[allow(dead_code)]
+    fn current_config(&self) -> C {
+        self.records[self.simple_profile.current()].config
+    }
+
     /// Returns the current level.
     pub fn current_level(&self) -> usize {
         self.simple_profile.current()

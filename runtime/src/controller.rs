@@ -1,3 +1,4 @@
+use errors::*;
 use adaptation::Signal;
 use futures::{Async, Poll, Stream};
 use std::sync::Arc;
@@ -89,7 +90,7 @@ impl Monitor {
 
 impl Stream for Monitor {
     type Item = Signal;
-    type Error = ();
+    type Error = Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         // We use a loop here to filter items: if `react_to_timer` returns
