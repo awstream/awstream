@@ -10,8 +10,9 @@ use super::setting::Setting;
 use super::socket::{FramedRead, Socket};
 use super::source::TimerSource;
 use super::video::VideoSource;
-use futures::{Future, Sink, Stream};
+
 use futures::sync::mpsc::UnboundedSender;
+use futures::{Future, Sink, Stream};
 use io;
 use std::net::SocketAddr;
 use tokio_core::net::TcpStream;

@@ -41,15 +41,6 @@ impl StreamingStat {
         }
     }
 
-    pub fn with_capacity(size: usize) -> Self {
-        assert!(size > 0);
-        StreamingStat {
-            pos: 0,
-            capacity: size,
-            buffer: vec![0.0; size],
-        }
-    }
-
     pub fn add(&mut self, sample: f64) {
         assert!(sample != ::std::f64::NAN);
         self.buffer[self.pos] = sample;
@@ -66,19 +57,19 @@ impl StreamingStat {
               .unwrap())
     }
 
-    pub fn sum(&self) -> f64 {
+    pub fn _sum(&self) -> f64 {
         trace!("for sum, consumed {:?}", self.buffer);
         self.buffer.iter().sum()
     }
 
-    pub fn mean(&self) -> (f64, f64) {
+    pub fn _mean(&self) -> (f64, f64) {
         trace!("for mean, consumed {:?}", self.buffer);
         let mut m = MeanWithError::default();
         self.buffer.iter().map(|&i| m.add(i)).count();
         (m.mean(), m.error())
     }
 
-    pub fn p99(&self) -> f64 {
+    pub fn _p99(&self) -> f64 {
         trace!("for p99, consumed {:?}", self.buffer);
         let mut q = Quantile::new(0.99);
         self.buffer.iter().map(|&i| q.add(i)).count();

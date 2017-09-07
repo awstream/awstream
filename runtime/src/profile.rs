@@ -105,30 +105,12 @@ pub struct Profile<C> {
 }
 
 impl<C: Copy> Profile<C> {
-    /// Returns the n-th configuration (we will simply do vector indexing).
-    pub fn nth(&self, level: usize) -> C {
-        self.records[level].config
-    }
-
     /// Returns the initial configuration (we will simply take the first).
     pub fn init_config(&self) -> C {
         self.records
             .first()
             .expect("no configuration in profile")
             .config
-    }
-
-    /// Returns the best configuration (we will simply take the last).
-    pub fn last_config(&self) -> C {
-        self.records
-            .last()
-            .expect("no configuration in profile")
-            .config
-    }
-
-    /// Returns the current configuration.
-    pub fn current_config(&self) -> C {
-        self.records[self.simple_profile.current()].config
     }
 
     /// Returns the current level.

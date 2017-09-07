@@ -6,7 +6,6 @@
 //! Key data structures are prefixed with `As`.
 #![recursion_limit = "1024"]
 #![deny(missing_docs)]
-#![allow(dead_code)]
 
 extern crate toml;
 extern crate average;
@@ -15,6 +14,8 @@ extern crate byteorder;
 extern crate bytes;
 extern crate chrono;
 extern crate csv;
+#[macro_use]
+extern crate error_chain;
 #[macro_use]
 extern crate futures;
 #[macro_use]
@@ -43,6 +44,7 @@ macro_rules! try_nb {
     })
 }
 
+mod errors;
 mod profile;
 mod setting;
 pub use setting::Setting;

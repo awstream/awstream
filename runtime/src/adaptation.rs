@@ -16,8 +16,6 @@ pub enum Signal {
     ProbeDone,
 }
 
-pub struct AdaptationController;
-
 #[derive(Debug, Clone, Copy)]
 pub enum Action {
     NoOp,

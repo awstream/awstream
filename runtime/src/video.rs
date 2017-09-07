@@ -5,30 +5,12 @@ use csv;
 use std::collections::BTreeMap;
 use std::path::Path;
 
-#[derive(Deserialize)]
-struct Record {
-    width: usize,
-    skip: usize,
-    quant: usize,
-    frame: usize,
-    bytes: usize,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+#[derive(Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub struct VideoConfig {
     pub width: usize,
     pub skip: usize,
     pub quant: usize,
-}
-
-impl VideoConfig {
-    pub fn new(w: usize, s: usize, q: usize) -> Self {
-        VideoConfig {
-            width: w,
-            skip: s,
-            quant: q,
-        }
-    }
 }
 
 impl ::std::fmt::Display for VideoConfig {
@@ -73,10 +55,6 @@ impl VideoSource {
             config: init,
             profile: p,
         }
-    }
-
-    pub fn profile(&self) -> Profile<VideoConfig> {
-        self.profile.clone()
     }
 
     pub fn next_frame(&mut self) -> usize {
