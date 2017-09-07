@@ -9,6 +9,9 @@ error_chain!{
         RemotePeer {
             description("error in receiving reports from peer")
         }
+        ControlPlane {
+            description("error in control plane")
+        }
     }
 
     foreign_links {

@@ -37,5 +37,5 @@ pub fn main() {
 
     // Client runs
     let setting = Setting::init("Setting.toml").unwrap();
-    client::run(setting);
+    client::run(setting).unwrap();
 }

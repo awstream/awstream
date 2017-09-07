@@ -14,34 +14,44 @@ use tokio_io::AsyncRead;
 use tokio_io::codec::{Decoder, Encoder};
 use tokio_io::io::WriteHalf;
 
+/// `Socket` manages sending data over the network with encoder `AsCodec`. When
+/// sending, it updates a counter of `AtomicUsize` so that other monitors can
+/// learn the throughput.
 #[derive(Debug)]
 pub struct Socket {
+    /// The write half of a `TcpStream`, which implements `Sink` interface.
     net: WriteHalf<TcpStream>,
+
+    /// Encoder that teach us how to encode.
     encoder: AsCodec,
 
+    /// Counter keeps track of bytes sent.
     bytes: Arc<AtomicUsize>,
-    last_item_size: usize,
 
+    /// Internal socket buffer.
     buffer: BytesMut,
 }
 
 impl Socket {
+    /// Send buffer size.
+    const INITIAL_CAPACITY: usize = 32 * 1_024;
+
+    /// Triggers `poll_complete` if buffered item exceeds the boundary.
+    const BACKPRESSURE_BOUNDARY: usize = Socket::INITIAL_CAPACITY;
+
+    /// Creates a new Socket by taking owner ship of the write half of
+    /// TcpStream. Also we return a copy of the counter.
     pub fn new(tcp: WriteHalf<TcpStream>) -> (Socket, Arc<AtomicUsize>) {
         let counter = Arc::new(AtomicUsize::new(0));
         let socket = Socket {
             net: tcp,
             encoder: AsCodec::default(),
             bytes: counter.clone(),
-            last_item_size: 0,
-
-            buffer: BytesMut::with_capacity(INITIAL_CAPACITY),
+            buffer: BytesMut::with_capacity(Socket::INITIAL_CAPACITY),
         };
         (socket, counter)
     }
 }
-
-const INITIAL_CAPACITY: usize = 32 * 1_024;
-const BACKPRESSURE_BOUNDARY: usize = INITIAL_CAPACITY;
 
 impl Sink for Socket {
     type SinkItem = AsDatum;
@@ -51,10 +61,10 @@ impl Sink for Socket {
         // If the buffer is already over 8KiB, then attempt to flush it. If
         // after flushing it's *still* over 8KiB, then apply backpressure
         // (reject the send).
-        if self.buffer.len() >= BACKPRESSURE_BOUNDARY {
+        if self.buffer.len() >= Socket::BACKPRESSURE_BOUNDARY {
             try!(self.poll_complete());
 
-            if self.buffer.len() >= BACKPRESSURE_BOUNDARY {
+            if self.buffer.len() >= Socket::BACKPRESSURE_BOUNDARY {
                 return Ok(AsyncSink::NotReady(item));
             }
         }
@@ -104,8 +114,6 @@ pub struct FramedRead<T, D> {
 }
 
 const READ_CAPACITY: usize = 8 * 1024;
-
-// ===== impl FramedRead =====
 
 impl<T, D> FramedRead<T, D>
 where
