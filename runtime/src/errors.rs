@@ -12,6 +12,15 @@ error_chain!{
         ControlPlane {
             description("error in control plane")
         }
+        ReplyChannel {
+            description("error in replying to client")
+        }
+        EncodeError {
+            description("error in encoding the data")
+        }
+        DecodeError {
+            description("error in decoding the data")
+        }
     }
 
     foreign_links {

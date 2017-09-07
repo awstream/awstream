@@ -64,6 +64,7 @@ mod video;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use bytes::{BufMut, BytesMut};
+use errors::*;
 use profile::SimpleProfile;
 use std::io::{self, Cursor};
 use std::mem;
@@ -296,9 +297,9 @@ pub struct AsDatum {
 
 impl Decoder for AsCodec {
     type Item = AsDatum;
-    type Error = io::Error;
+    type Error = Error;
 
-    fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<AsDatum>, io::Error> {
+    fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<AsDatum>> {
         trace!("Decode: {:?}", buf);
         loop {
             match self.state {
@@ -338,9 +339,9 @@ impl Decoder for AsCodec {
 
 impl Encoder for AsCodec {
     type Item = AsDatum;
-    type Error = io::Error;
+    type Error = Error;
 
-    fn encode(&mut self, d: AsDatum, buf: &mut BytesMut) -> Result<(), io::Error> {
+    fn encode(&mut self, d: AsDatum, buf: &mut BytesMut) -> Result<()> {
         let payload_size = d.len;
         let message_size = mem::size_of::<u64>() + payload_size as usize;
         buf.reserve(message_size);

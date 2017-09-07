@@ -4,10 +4,10 @@ use super::{AsCodec, AsDatum, AsDatumType, ReceiverReport};
 use super::bw_monitor::BwMonitor;
 use super::utils::StreamingStat;
 use chrono;
-use chrono::{DateTime, TimeZone};
+use chrono::{DateTime, TimeZone, Utc};
+use errors::*;
 use futures::{Future, Sink, Stream};
 use interval;
-use io::Result;
 use std::time::Duration;
 use tokio_core::net::{TcpListener, TcpStream};
 use tokio_core::reactor::{Core, Handle};
@@ -39,13 +39,13 @@ pub fn server(port: u16) {
 }
 
 /// The main server logic that handles a particular socket.
-fn handle_connection(socket: TcpStream, handle: &Handle) -> Result<()> {
+fn handle_connection(socket: TcpStream, handle: &Handle) -> ::std::io::Result<()> {
     let transport = socket.framed(AsCodec::default());
+    let (transport_write, transport_read) = transport.split();
 
     let mut goodput = BwMonitor::new();
-    let mut goodput2 = goodput.clone();
     let mut throughput = BwMonitor::new();
-    let mut throughput2 = throughput.clone();
+    let mut reporter = Reporter::new(transport_write, goodput.clone(), throughput.clone());
 
     let timer = tokio_timer::Timer::default();
     let (ticks, tick_stopper) = interval::new(timer, Duration::from_millis(1000));
@@ -64,48 +64,29 @@ fn handle_connection(socket: TcpStream, handle: &Handle) -> Result<()> {
     // Spawn a new task dedicated to measure bandwidth
     handle.spawn(estimate_throughput.map_err(|_| ()));
 
-    let mut min_latency = StreamingStat::new(::std::f64::INFINITY, 10);
-
-    let (mut transport_write, transport_read) = transport.split();
     let process_connection = transport_read
         .for_each(move |as_datum| {
+            let size = as_datum.len() as usize;
+            reporter.throughput.add(size);
             match as_datum.datum_type() {
                 AsDatumType::Live(level) => {
                     let size = as_datum.len() as usize;
-                    goodput2.add(size);
-
-                    let now = chrono::Utc::now();
-                    let latency = time_diff_in_ms(now, as_datum.ts);
-
-                    if latency > 20.0 * min_latency.min() && latency > 10.0 {
-                        info!("reporting latency spikes {}", min_latency.min());
-                        let report =
-                            ReceiverReport::new(latency, goodput2.rate(), throughput2.rate());
-                        transport_write.start_send(AsDatum::ack(report)).expect(
-                            "failed to write back",
-                        );
-                        transport_write.poll_complete().expect(
-                            "failed to write back",
-                        );
-                    }
-                    info!(
-                        "level: {}, latency: {:.1} ms, size: {}",
-                        level,
-                        latency,
-                        size
-                    );
+                    reporter.goodput.add(size);
+                    reporter.report(level, as_datum)?
                 }
                 AsDatumType::Dummy => {}
                 AsDatumType::LatencyProbe => {
                     let now = chrono::Utc::now();
                     let latency = time_diff_in_ms(now, as_datum.ts);
-                    min_latency.add(latency);
-                    info!("latency estimate: {}/{:.1}", latency, min_latency.min());
+                    reporter.update_min_latency(latency);
+                    info!(
+                        "latency estimate: {}/{:.1}",
+                        latency,
+                        reporter.min_latency()
+                    );
                 }
                 _ => {}
             }
-            let size = as_datum.len() as usize;
-            throughput2.add(size);
             Ok(())
         })
         .map_err(|_| ());
@@ -116,4 +97,58 @@ fn handle_connection(socket: TcpStream, handle: &Handle) -> Result<()> {
         Ok(())
     }));
     Ok(())
+}
+
+struct Reporter<T: Sink<SinkItem = AsDatum, SinkError = Error>> {
+    last_report_time: DateTime<Utc>,
+    min_latency: StreamingStat,
+    reporter: T,
+
+    goodput: BwMonitor,
+    throughput: BwMonitor,
+}
+
+impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
+    pub fn new(reporter: T, goodput: BwMonitor, throughput: BwMonitor) -> Self {
+        Reporter {
+            last_report_time: chrono::Utc::now(),
+            min_latency: StreamingStat::new(::std::f64::INFINITY, 10),
+            reporter: reporter,
+            goodput: goodput,
+            throughput: throughput,
+        }
+    }
+
+    pub fn update_min_latency(&mut self, latency: f64) {
+        self.min_latency.add(latency);
+    }
+
+    pub fn min_latency(&self) -> f64 {
+        self.min_latency.min()
+    }
+    pub fn report(&mut self, level: usize, datum: AsDatum) -> Result<()> {
+        let ts = datum.ts;
+        let now = chrono::Utc::now();
+        let latency = time_diff_in_ms(now, ts);
+        info!(
+            "level: {}, latency: {:.1}, size: {}",
+            level,
+            latency,
+            datum.len()
+        );
+        if latency > 20.0 * self.min_latency.min() && latency > 10.0 {
+            let time_since_last_report = time_diff_in_ms(now, self.last_report_time);
+            if time_since_last_report > 500.0 {
+                self.last_report_time = now;
+                info!("reporting latency spikes {}", self.min_latency.min());
+                let report =
+                    ReceiverReport::new(latency, self.goodput.rate(), self.throughput.rate());
+
+                let datum = AsDatum::ack(report);
+                self.reporter.start_send(datum)?;
+                self.reporter.poll_complete()?;
+            }
+        }
+        Ok(())
+    }
 }
