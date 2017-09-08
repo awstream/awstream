@@ -1,30 +1,44 @@
-Evaluation
+Profiling and Evaluation
 ---
 
-There are fives types of data involved in the evaluation:
+There are fives types of data involved in the profiling:
 
 - measured data
-- statistics (true positive, false positive and true negative per frame)
+- per-frame statistics (true positive, false positive and true negative per frame)
 - summary data
 - profile
 - pareto
 
-### measured data
+## measured data
 
-[video-profiling](../video-profiling) scripts will generate a folder that
-contains `acc-X.csv` and `bw-X.csv`. `acc-X.csv` is a CSV file whose entries are
-`frame_num, process_time, object, probability, boundingbox_x, boundingbox_y,
-boundingbox_width, boundingbox_height`. `bw-X.csv` is a CSV file whose entries
-are `frame_num, size_in_bytes`.
+[video-profiling](video/video-profiling) scripts will generate a folder that
+contains `acc-X.csv` and `bw-X.csv`.
 
-We manually rename `acc-1920x0x0.csv` as groundtruth here.
+`acc-X.csv` is a CSV file whose entries contain the object/pedestrian detection information.
 
-### statistics
+```
+(frame_num, process_time, object, probability, boundingbox_x, boundingbox_y, boundingbox_width, boundingbox_height)
+```
 
-TODO: [stats.rs](stats.rs) takes the measured data (mainly `acc-X.csv`) and
-produces statistics data.
+`bw-X.csv` is a CSV file whose entries contain per frame size in bytes.
 
-### summary data
+```
+(frame_num, size_in_bytes)
+```
+
+We manually rename `acc-1920x0x0.csv` to groundtruth file.
+
+## statistics
+
+[stats](evaluation/src/bin/stat.rs) takes the measured data (mainly `acc-X.csv`)
+and produces statistics data. You may configure it to run for a subset of frames
+`(0..limit)` or a subset of configuration with `--profile <profile_file>`.
+
+------------------------
+
+Note: haven't updated scripts below
+
+## summary data
 
 [summary.rs](summary.rs) takes the measured data (`bw-X.csv`) and the stat file
 (`stats.csv`); it produces the summary data with configurable interval (5
