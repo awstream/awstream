@@ -70,13 +70,15 @@ impl FrameStat {
 
     /// Convert a frame stat to tuple
     pub fn to_tuple(&self) -> (usize, usize, usize, usize, usize, usize, usize) {
-        (self.frame_num,
-         self.config.width,
-         self.config.skip,
-         self.config.quant,
-         self.stat.true_positive,
-         self.stat.false_negative,
-         self.stat.false_negative)
+        (
+            self.frame_num,
+            self.config.width,
+            self.config.skip,
+            self.config.quant,
+            self.stat.true_positive,
+            self.stat.false_positive,
+            self.stat.false_negative,
+        )
     }
 }
 
@@ -114,7 +116,8 @@ pub fn load_accuracy<R: Read>(rdr: R, opt: LoadAccOption) -> Vec<FrameDetections
     let mut reader = csv::Reader::from_reader(rdr).has_headers(false);
 
     // decode all rows
-    let data = reader.decode()
+    let data = reader
+        .decode()
         .map(|record| record.expect("unexpected data format"))
         .collect::<Vec<Detection>>();
 
@@ -147,17 +150,17 @@ pub fn load_accuracy<R: Read>(rdr: R, opt: LoadAccOption) -> Vec<FrameDetections
         .map(|i| {
             let frame_num = i + 1;
             partial.remove(&frame_num).unwrap_or(FrameDetections {
-                                                     frame_num: i,
-                                                     dets: Vec::new(),
-                                                 })
+                frame_num: i,
+                dets: Vec::new(),
+            })
         })
         .collect::<Vec<FrameDetections>>()
 }
 
 #[inline]
-fn load_groundtruth(dir: &str) -> Vec<FrameDetections> {
+fn load_groundtruth(dir: &str, option: LoadAccOption) -> Vec<FrameDetections> {
     let gt_file = super::gt_file(dir);
-    load_accuracy(gt_file, LoadAccOption::All)
+    load_accuracy(gt_file, option)
 }
 
 #[inline]
@@ -168,11 +171,17 @@ fn load_test(dir: &str, vc: VideoConfig, frame_num: usize) -> Vec<FrameDetection
 
 /// For a particular configuration, this function will return all the stats (for
 /// all frames) against the groundtruth.
-fn get_vec_of_stats(dir: &str, vc: VideoConfig) -> Vec<Stat> {
-    let groundtruth = load_groundtruth(dir);
+fn get_vec_of_stats(dir: &str, vc: VideoConfig, l: Option<usize>) -> Vec<Stat> {
+    let option = match l {
+        Some(l) => LoadAccOption::Until(l),
+        None => LoadAccOption::All,
+    };
+
+    let groundtruth = load_groundtruth(dir, option);
     let test = load_test(dir, vc, groundtruth.len());
 
-    groundtruth.iter()
+    groundtruth
+        .iter()
         .enumerate()
         .map(|(frame_num, gt_frame)| {
             let test_frame_num = frame_num.wrapping_div(vc.skip + 1);
@@ -192,10 +201,11 @@ fn get_vec_of_stats(dir: &str, vc: VideoConfig) -> Vec<Stat> {
 }
 
 /// Generate per-frame stat with configuration.
-pub fn get_frame_stats(dir: &str, vc: VideoConfig) -> Vec<FrameStat> {
-    let stats = get_vec_of_stats(dir, vc);
+pub fn get_frame_stats(dir: &str, vc: VideoConfig, limit: Option<usize>) -> Vec<FrameStat> {
+    let stats = get_vec_of_stats(dir, vc, limit);
 
-    stats.iter()
+    stats
+        .iter()
         .enumerate()
         .map(|(i, stat)| FrameStat::new(i, vc, *stat))
         .collect()
@@ -211,7 +221,7 @@ pub fn aggregate_accuracy(dir: &str, outdir: &str, vc: VideoConfig, duration_in_
 
     // stats is a vector of stats (tp, fp, fn) and aggregate (chunk) them with
     // duration.
-    let stats = get_vec_of_stats(dir, vc);
+    let stats = get_vec_of_stats(dir, vc, None);
 
     // Write out accuracy (aggregated with `duration`)
     let of = vc.derive_acc_file(outdir);
@@ -244,11 +254,7 @@ pub fn extract_proc_time(dir: &str, outdir: &str, vc: VideoConfig) {
     for (i, frame_det) in test.iter().enumerate() {
         let record = {
             if frame_det.dets.len() > 0 {
-                (frame_det.frame_num,
-                 frame_det.dets
-                     .first()
-                     .unwrap()
-                     .time)
+                (frame_det.frame_num, frame_det.dets.first().unwrap().time)
             } else {
                 (i, ::std::f64::NAN)
             }
