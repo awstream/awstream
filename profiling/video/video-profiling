@@ -1,0 +1,85 @@
+#!/bin/bash
+# -*- mode: sh -*-
+
+## Five parameters are involved in a profiling stage: (filesrc, extension, frame
+## width, fps, quantizer).
+
+set -x
+
+## filesrc and extension are for each application
+DIR=`pwd`
+## SRC_DIR=$HOME/box/AdaptiveStream/darknet-data/test-raw
+SRC_DIR=$HOME/box/AdaptiveStream/mot-data/test-original
+E="jpg"
+
+run_test () {
+    ## If running profiling for test, only do it for Pareto configurations
+    run_one 1600 0 30
+}
+
+main () {
+    run
+    ## run_test
+}
+
+run() {
+    ## For training (offline profiling), use the entire array
+    ## Width: [1920, 1600, 1280, 960, 640, 320]
+    ## Skip: [0, 2, 5, 9, 14, 29] => FPS: [30, 10, 5, 3, 2, 1]
+    ## Quantizer: [0, 10, 20, 30, 40, 50]
+    width=( 320 640 960 1280 1600 1920 )
+    skip=( 29 14 9 5 2 0 )
+    quantizer=( 0 10 20 30 40 50 )
+    for w in "${width[@]}"
+    do
+        for s in "${skip[@]}"
+        do
+            for q in "${quantizer[@]}"
+            do
+                run_one $w $s $q
+            done
+        done
+    done
+}
+
+## $1 = destination folder
+output_to_video() {
+    gst-launch-1.0 filesrc location=output !\
+                   h264parse ! avdec_h264 ! videoconvert !\
+                   avimux ! filesink location=data/$1/tmp.avi
+}
+
+## $1 = destination folder
+output_to_bmp() {
+    gst-launch-1.0 filesrc location=output !\
+                   h264parse ! avdec_h264 ! videoconvert !\
+                   avenc_bmp ! multifilesink location=data/$1/%06d.bmp
+}
+
+## Run one complete processing session:
+##  Argument: $1=width, $2=skip, $3=quantizer
+##
+## 1. Encode: video-loader (Rust program) that reads from ($INPUT, $EXT) and
+##    writes the encoded content into `output` (a file).
+## 2. Decode: Run a GStreamer pipeline to decode `output` into pictures/videos
+## 3. Process: Run detection (darknet or pedestrian) to create all CSVs
+##
+## This function also handles cleaning up using `rm` because files may be huge.
+run_one() {
+    echo "$(date): running configuration $1x$2x$3" >> progress
+
+    INPUT=$SRC_DIR EXT=$E WIDTH=$1 SKIP=$2 Q=$3 cargo run --release > data/bw-$1x$2x$3.csv
+
+    mkdir -p data/$1x$2x$3
+    output_to_video $1x$2x$3
+    # output_to_bmp $1x$2x$3
+
+    INPUT=data/$1x$2x$3/tmp.avi cargo run --release -- pedestrian | grep , > data/acc-$1x$2x$3.csv
+
+    rm -rf data/$1x$2x$3
+    rm -f output
+
+    echo "$(date): configuration $1x$2x$3 done" >> progress
+}
+
+main $@

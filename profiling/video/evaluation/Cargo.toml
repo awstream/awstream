@@ -1,0 +1,36 @@
+[package]
+name = "evaluation"
+version = "0.1.0"
+authors = ["Ben Zhang <benzh@cs.berkeley.edu>"]
+
+[dependencies]
+csv = "0.15.0"
+itertools = "0.5.9"
+rustc-serialize = "0.3"
+log = "*"
+rayon = "0.6.0"
+rand = "*"
+
+[[bin]]
+name = "stat"
+path = "stat.rs"
+
+[[bin]]
+name = "summary"
+path = "summary.rs"
+
+[[bin]]
+name = "pareto"
+path = "pareto.rs"
+
+[[bin]]
+name = "online"
+path = "online.rs"
+
+# [[bin]]
+# name = "trace"
+# path = "trace.rs"
+
+# [[bin]]
+# name = "udp"
+# path = "udp.rs"

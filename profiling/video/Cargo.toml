@@ -1,0 +1,22 @@
+[package]
+name = "video-analytics"
+version = "0.1.0"
+authors = ["Ben Zhang <benzh@cs.berkeley.edu>"]
+
+[dependencies]
+csv = "0.15.0"
+darknet = { git = "https://github.com/nebgnahz/darknet-rs" }
+env_logger = "0.3.5"
+error-chain = "0.7"
+gstreamer = { git = "https://github.com/nebgnahz/gstreamer1.0-rs", branch = "macos" }
+log = "0.3.5"
+schedule_recv = "0.1.0"
+time = "0.1.35"
+
+[dependencies.cv]
+git = "https://github.com/nebgnahz/cv-rs"
+features = [ "gpu" ]
+
+[[bin]]
+name = "main"
+doc = false

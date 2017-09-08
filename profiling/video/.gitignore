@@ -1,0 +1,10 @@
+data
+.tramp_history
+Cargo.lock
+target
+output
+*.bk
+
+darknet-data
+
+.Rhistory
