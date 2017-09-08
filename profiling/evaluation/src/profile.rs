@@ -5,21 +5,62 @@ use csv;
 use helper;
 use rand::{sample, thread_rng};
 use rayon::prelude::*;
+use serde::de::DeserializeOwned;
+use std::fmt::Debug;
+use std::path::Path;
+/// Record is each individual rule in a profile.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+struct Record<C> {
+    pub bandwidth: f64,
+    pub config: C,
+    pub accuracy: f64,
+}
+
+impl<T: DeserializeOwned + Copy + Debug> Profile<T> {
+    /// Creates a new `Profile` instance with a path pointing to the profile
+    /// file (CSV). The columns in the file needs to match the config type.
+    /// Because this is the loading phase, we bail early (use expect!).
+    pub fn new<P: AsRef<Path>>(path: P) -> Profile<T> {
+        let errmsg = format!("no profile file {:?}", path.as_ref());
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(false)
+            .from_path(path)
+            .expect(&errmsg);
+        let mut vec = Vec::new();
+        for record in rdr.deserialize() {
+            let record: Record<T> = record.expect("failed to parse the record");
+            let config = Configuration {
+                param: record.config,
+                bandwidth: record.bandwidth,
+                accuracy: record.accuracy,
+            };
+            vec.push(config);
+        }
+
+        Profile { configurations: vec }
+    }
+}
 
 /// Given a configuration, this function merges bandwidth measure and accuracy
 /// measure, returns a vector of (bandwidth, accuracy)
 pub fn get_bandwidth_accuracy_for_config(dir: &str, vc: &VideoConfig) -> Vec<(f64, f64)> {
     let bwfile = vc.derive_bw_file(dir);
-    let mut reader = csv::Reader::from_file(&bwfile).unwrap().has_headers(false);
+    let mut reader = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_path(&bwfile)
+        .unwrap();
     let bw = reader
-        .decode()
+        .deserialize()
         .map(|record| record.expect("unexpected data format"))
         .collect::<Vec<(usize, f64)>>();
 
     let accfile = vc.derive_acc_file(dir);
-    let mut reader = csv::Reader::from_file(&accfile).unwrap().has_headers(false);
+    let mut reader = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_path(&accfile)
+        .unwrap();
     let acc = reader
-        .decode()
+        .deserialize()
         .map(|record| record.expect("unexpected data format"))
         .map(|r: (usize, f64)| if r.1.is_nan() { (r.0, 0.0) } else { r })
         .collect::<Vec<(usize, f64)>>();
@@ -50,12 +91,12 @@ pub fn summarize_profile(dir: &str, outdir: &str) {
         .collect::<Vec<_>>();
 
     let ofile = format!("{}/profile.csv", outdir);
-    let mut writer = csv::Writer::from_file(&ofile).expect("failed to open profile.csv");
+    let mut writer = csv::Writer::from_path(&ofile).expect("failed to open profile.csv");
     let header = ("bandwidth", "width", "skip", "quant", "accuracy");
-    writer.encode(header).expect("failed to write header");
+    writer.serialize(header).expect("failed to write header");
     for (p, vc) in p.iter().zip(configurations.iter()) {
         let entry = (p.0, vc.width, vc.skip, vc.quant, p.1);
-        writer.encode(entry).expect("failed to write to csv");
+        writer.serialize(entry).expect("failed to write to csv");
     }
 
     let pareto = pareto(&p);
@@ -73,11 +114,11 @@ pub fn summarize_profile(dir: &str, outdir: &str) {
     pareto.dedup_by_key(|i| (i.0 * 10.0).round() as usize);
 
     let ofile = format!("{}/pareto.csv", outdir);
-    let mut writer = csv::Writer::from_file(&ofile).expect("failed to open pareto.csv");
-    writer.encode(header).expect("failed to write header");
+    let mut writer = csv::Writer::from_path(&ofile).expect("failed to open pareto.csv");
+    writer.serialize(header).expect("failed to write header");
     for i in pareto {
         let entry = (i.0 * 1_000.0, i.2.width, i.2.skip, i.2.quant, i.1);
-        writer.encode(entry).expect("failed to write to csv");
+        writer.serialize(entry).expect("failed to write to csv");
     }
 }
 

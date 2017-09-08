@@ -5,11 +5,13 @@
 extern crate csv;
 #[macro_use]
 extern crate itertools;
-extern crate rustc_serialize;
 extern crate rand;
 #[macro_use]
 extern crate log;
 extern crate rayon;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
 
 mod acc;
 pub use acc::aggregate_accuracy;

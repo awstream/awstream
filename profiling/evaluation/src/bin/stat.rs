@@ -17,6 +17,7 @@ fn main() {
     let opt = Opt::from_args();
 
     let configurations = evaluation::all_configurations();
+
     let intermediate = configurations
         .par_iter()
         .map(|&vc| {
@@ -29,10 +30,10 @@ fn main() {
 
     let cwd = ".".to_string();
     let outfile = format!("{}/stat.csv", opt.output_dir.unwrap_or(cwd));
-    let mut writer = Writer::from_file(outfile).expect("csv open failed");
+    let mut writer = Writer::from_path(outfile).expect("csv open failed");
 
     for i in intermediate {
-        writer.encode(i).expect("failed to write csv");
+        writer.serialize(i).expect("failed to write csv");
     }
 }
 
@@ -43,6 +44,10 @@ struct Opt {
     /// The folder that contains profiling measurement.
     #[structopt(help = "Input Directory")]
     input_dir: String,
+
+    /// A profile that limits what configuration to choose when generating stats.
+    #[structopt(help = "The path to the profile")]
+    profile_path: Option<String>,
 
     /// The folder that contains profiling measurement.
     #[structopt(short = "o", long = "out")]

@@ -1,5 +1,5 @@
 use super::VideoConfig;
-use csv;
+use csv::{self, ReaderBuilder};
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::io::Read;
@@ -16,7 +16,7 @@ use std::io::Read;
 /// 000001, 124.38, chair, 0.40833116, 0.061372586, 0.7874061, 0.115715936, 0.43029734
 /// 000001, 124.38, chair, 0.816612, 0.59668547, 0.82424617, 0.33602527, 0.37017298
 /// ```
-#[derive(RustcDecodable, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Detection {
     frame_num: usize,
     time: f64,
@@ -113,11 +113,11 @@ pub enum LoadAccOption {
 /// Take a reader (file, string, etc.) and return a vector of framed detections.
 pub fn load_accuracy<R: Read>(rdr: R, opt: LoadAccOption) -> Vec<FrameDetections> {
     // first create a csv reader
-    let mut reader = csv::Reader::from_reader(rdr).has_headers(false);
+    let mut reader = ReaderBuilder::new().has_headers(false).from_reader(rdr);
 
     // decode all rows
     let data = reader
-        .decode()
+        .deserialize()
         .map(|record| record.expect("unexpected data format"))
         .collect::<Vec<Detection>>();
 
@@ -225,7 +225,7 @@ pub fn aggregate_accuracy(dir: &str, outdir: &str, vc: VideoConfig, duration_in_
 
     // Write out accuracy (aggregated with `duration`)
     let of = vc.derive_acc_file(outdir);
-    let mut writer = csv::Writer::from_file(of).expect("failed to open outfile for acc");
+    let mut writer = csv::Writer::from_path(of).expect("failed to open outfile for acc");
 
     for (i, chunk) in stats.chunks(duration).enumerate() {
         let true_positive = chunk.iter().map(|i| i.true_positive).sum::<usize>();
@@ -235,7 +235,7 @@ pub fn aggregate_accuracy(dir: &str, outdir: &str, vc: VideoConfig, duration_in_
         let p = precision(true_positive, false_postive);
         let r = recall(true_positive, false_negative);
         let f1 = f1(p, r);
-        writer.encode((i, f1)).expect("failed to write csv");
+        writer.serialize((i, f1)).expect("failed to write csv");
     }
 }
 
@@ -249,7 +249,7 @@ pub fn extract_proc_time(dir: &str, outdir: &str, vc: VideoConfig) {
 
     // Output
     let outfile = vc.derive_ts_file(outdir);
-    let mut writer = csv::Writer::from_file(outfile).expect("failed to open outfile for time");
+    let mut writer = csv::Writer::from_path(outfile).expect("failed to open outfile for time");
 
     for (i, frame_det) in test.iter().enumerate() {
         let record = {
@@ -259,7 +259,7 @@ pub fn extract_proc_time(dir: &str, outdir: &str, vc: VideoConfig) {
                 (i, ::std::f64::NAN)
             }
         };
-        writer.encode(record).expect("failed to write csv");
+        writer.serialize(record).expect("failed to write csv");
     }
 }
 

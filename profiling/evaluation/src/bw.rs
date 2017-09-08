@@ -14,15 +14,16 @@ pub fn aggregate_bandwidth(dir: &str, outdir: &str, vc: VideoConfig, duration: u
     let fps = helper::skip_to_fps(vc.skip);
 
     // reader and writer for the input/output file
-    let mut reader = csv::Reader::from_file(&infile)
-        .expect("failed to open bandwidth file")
-        .has_headers(false);
-    let mut writer = csv::Writer::from_file(outfile).expect("failed to open outfile");
+    let mut reader = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_path(&infile)
+        .expect("failed to open bandwidth file");
+    let mut writer = csv::Writer::from_path(outfile).expect("failed to open outfile");
 
     // read input data as a vector
     // it must follow `frame_num, size` format
     let data = reader
-        .decode()
+        .deserialize()
         .map(|record| record.expect("unexpected data format"))
         .collect::<Vec<(usize, usize)>>();
 
@@ -31,6 +32,6 @@ pub fn aggregate_bandwidth(dir: &str, outdir: &str, vc: VideoConfig, duration: u
     for (i, chunk) in data.chunks(fps * duration).enumerate() {
         let bw = (chunk.iter().map(|i| i.1).sum::<usize>() * 8) as f64 / 1_000_000.0 /
             (duration as f64);
-        writer.encode((i, bw)).expect("failed to write bw to csv");
+        writer.serialize((i, bw)).expect("failed to write bw to csv");
     }
 }
