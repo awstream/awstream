@@ -1,0 +1,7 @@
+data
+.tramp_history
+Cargo.lock
+target
+output
+*.bk
+.Rhistory
