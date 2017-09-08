@@ -10,13 +10,20 @@ extern crate structopt;
 extern crate structopt_derive;
 
 use csv::Writer;
+use evaluation::{Profile, VideoConfig};
 use rayon::prelude::*;
 use structopt::StructOpt;
 
 fn main() {
     let opt = Opt::from_args();
 
-    let configurations = evaluation::all_configurations();
+    let configurations = match &opt.profile_path {
+        &Some(ref path) => {
+            let profile: Profile<VideoConfig> = Profile::new(&path);
+            profile.all_params()
+        }
+        &None => evaluation::all_configurations(),
+    };
 
     let intermediate = configurations
         .par_iter()
@@ -46,6 +53,7 @@ struct Opt {
     input_dir: String,
 
     /// A profile that limits what configuration to choose when generating stats.
+    #[structopt(short = "p", long = "profile")]
     #[structopt(help = "The path to the profile")]
     profile_path: Option<String>,
 

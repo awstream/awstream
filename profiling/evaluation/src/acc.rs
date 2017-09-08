@@ -347,14 +347,14 @@ mod tests {
     #[test]
     fn test_frame_detection_true_positive() {
         let gt_str = "
-000001, 1.0, obj1, 0.5, 0.1, 0.1, 0.2, 0.2
-000001, 1.0, obj2, 0.5, 0.4, 0.4, 0.2, 0.2
-000002, 1.0, obj1, 0.5, 0.1, 0.1, 0.2, 0.2";
-        let gt = load_accuracy(gt_str.as_bytes(), None);
+000001,1.0,obj1,0.5,0.1,0.1,0.2,0.2
+000001,1.0,obj2,0.5,0.4,0.4,0.2,0.2
+000002,1.0,obj1,0.5,0.1,0.1,0.2,0.2";
+        let gt = load_accuracy(gt_str.as_bytes(), LoadAccOption::All);
 
         let test_str = "
-000001, 1.0, obj1, 0.5, 0.1, 0.1, 0.2, 0.2";
-        let test = load_accuracy(test_str.as_bytes(), None);
+000001,1.0,obj1,0.5,0.1,0.1,0.2,0.2";
+        let test = load_accuracy(test_str.as_bytes(), LoadAccOption::All);
 
         // Groundtruth has two frames and test has only one frame
         assert_eq!(gt.len(), 2);
@@ -363,21 +363,21 @@ mod tests {
         // Test's first frame should has true positive: 1, false positive: 0,
         // false negative: 0
         let stat = test[0].stat_against(&gt[0]);
-        assert_eq!(stat.0, 1);
-        assert_eq!(stat.1, 0);
-        assert_eq!(stat.2, 1);
+        assert_eq!(stat.true_positive, 1);
+        assert_eq!(stat.false_positive, 0);
+        assert_eq!(stat.false_negative, 1);
     }
 
     #[test]
     fn test_empty_file() {
         let gt_str = "
-000001, 1.0, obj1, 0.5, 0.1, 0.1, 0.2, 0.2
-000001, 1.0, obj2, 0.5, 0.4, 0.4, 0.2, 0.2
-000002, 1.0, obj1, 0.5, 0.1, 0.1, 0.2, 0.2";
-        let gt = load_accuracy(gt_str.as_bytes(), None);
+000001,1.0,obj1,0.5,0.1,0.1,0.2,0.2
+000001,1.0,obj2,0.5,0.4,0.4,0.2,0.2
+000002,1.0,obj1,0.5,0.1,0.1,0.2,0.2";
+        let gt = load_accuracy(gt_str.as_bytes(), LoadAccOption::All);
 
         let test_str = "";
-        let test = load_accuracy(test_str.as_bytes(), Some(gt.len()));
+        let test = load_accuracy(test_str.as_bytes(), LoadAccOption::Until(gt.len()));
 
         // Groundtruth has two frames and test has only one frame
         assert_eq!(gt.len(), 2);

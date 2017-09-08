@@ -201,6 +201,14 @@ impl<T: Copy + Clone> Profile<T> {
 
         Pareto { set: set }
     }
+
+    /// Returns the list of all profile configurations.
+    pub fn all_params(&self) -> Vec<T> {
+        self.configurations
+            .iter()
+            .map(|c| c.param)
+            .collect::<Vec<T>>()
+    }
 }
 
 impl<T: PartialEq + Eq + Clone + Copy> Profile<T> {

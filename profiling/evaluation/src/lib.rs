@@ -33,7 +33,7 @@ pub use bw::aggregate_bandwidth;
 
 use std::fs::File;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 /// Video configuration consists of width, skip and quantization
 pub struct VideoConfig {
     /// frame width
