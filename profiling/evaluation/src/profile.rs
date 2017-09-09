@@ -209,6 +209,11 @@ impl<T: Copy + Clone> Profile<T> {
             .map(|c| c.param)
             .collect::<Vec<T>>()
     }
+
+    /// Return the n_th configuration
+    pub fn n_th(&self, n: usize) -> T {
+        self.configurations[n].param
+    }
 }
 
 impl<T: PartialEq + Eq + Clone + Copy> Profile<T> {

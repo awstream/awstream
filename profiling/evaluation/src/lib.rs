@@ -14,6 +14,8 @@ extern crate serde_derive;
 extern crate serde;
 
 mod acc;
+pub use acc::{f1, precision, recall};
+pub use acc::FrameStat;
 pub use acc::aggregate_accuracy;
 pub use acc::extract_proc_time;
 pub use acc::get_frame_stats;

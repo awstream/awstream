@@ -4,13 +4,11 @@
 
 extern crate evaluation;
 extern crate rayon;
-extern crate csv;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
 
-use csv::Writer;
-use evaluation::{Profile, VideoConfig};
+use evaluation::{Profile, VideoConfig, FrameStat};
 use rayon::prelude::*;
 use structopt::StructOpt;
 
@@ -25,23 +23,19 @@ fn main() {
         &None => evaluation::all_configurations(),
     };
 
-    let intermediate = configurations
+    let vec_frame_stat = configurations
         .par_iter()
         .map(|&vc| {
             println!("running for {}", vc);
             evaluation::get_frame_stats(&opt.input_dir, vc, opt.limit)
         })
         .flat_map(|s| s)
-        .map(|s| s.to_tuple())
-        .collect::<Vec<(usize, usize, usize, usize, usize, usize, usize)>>();
+        .collect::<Vec<_>>();
 
     let cwd = ".".to_string();
     let outfile = format!("{}/stat.csv", opt.output_dir.unwrap_or(cwd));
-    let mut writer = Writer::from_path(outfile).expect("csv open failed");
 
-    for i in intermediate {
-        writer.serialize(i).expect("failed to write csv");
-    }
+    FrameStat::to_csv(vec_frame_stat, outfile);
 }
 
 #[derive(StructOpt, Debug)]

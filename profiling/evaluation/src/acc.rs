@@ -3,6 +3,7 @@ use csv::{self, ReaderBuilder};
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::io::Read;
+use std::path::Path;
 
 /// Detection represents detected object. This struct is mostly constructed from
 /// the CSV log.
@@ -36,11 +37,16 @@ pub struct FrameDetections {
     dets: Vec<Detection>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Stat {
-    true_positive: usize,
-    false_positive: usize,
-    false_negative: usize,
+    /// True positive
+    pub true_positive: usize,
+
+    /// False positive
+    pub false_positive: usize,
+
+    /// False negative
+    pub false_negative: usize,
 }
 
 impl Stat {
@@ -53,13 +59,21 @@ impl Stat {
     }
 }
 
+/// Per frame statistics
+#[derive(Serialize, Deserialize, Debug)]
 pub struct FrameStat {
+    /// The frame number
     pub frame_num: usize,
+
+    /// Video configuration
     pub config: VideoConfig,
+
+    /// Accuracy statistics
     pub stat: Stat,
 }
 
 impl FrameStat {
+    /// Creates a new frame statistics
     pub fn new(i: usize, config: VideoConfig, stat: Stat) -> Self {
         FrameStat {
             frame_num: i,
@@ -67,20 +81,40 @@ impl FrameStat {
             stat: stat,
         }
     }
+}
 
-    /// Convert a frame stat to tuple
-    pub fn to_tuple(&self) -> (usize, usize, usize, usize, usize, usize, usize) {
-        (
-            self.frame_num,
-            self.config.width,
-            self.config.skip,
-            self.config.quant,
-            self.stat.true_positive,
-            self.stat.false_positive,
-            self.stat.false_negative,
-        )
+impl FrameStat {
+    /// Creates a new `FrameStat` instance with a path pointing to the CSV file.
+    pub fn to_csv<P: AsRef<Path>>(vec: Vec<FrameStat>, path: P) {
+        let mut writer = csv::WriterBuilder::new()
+            .has_headers(false)
+            .from_path(path)
+            .expect("write frame stats failed");
+
+        for i in vec {
+            writer.serialize(i).expect("failed to write csv");
+        }
+    }
+
+    /// Creates a new `FrameStat` instance with a path pointing to the CSV file.
+    pub fn from_csv<P: AsRef<Path>>(path: P) -> Vec<FrameStat> {
+        let errmsg = format!("no profile file {:?}", path.as_ref());
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(false)
+            .from_path(path)
+            .expect(&errmsg);
+
+        let mut vec = ::std::vec::Vec::new();
+
+        for record in rdr.deserialize() {
+            let record: FrameStat = record.expect("failed to parse the record");
+            vec.push(record);
+        }
+
+        vec
     }
 }
+
 
 impl FrameDetections {
     /// Count the number of true positive detections in this frame. True
@@ -263,14 +297,17 @@ pub fn extract_proc_time(dir: &str, outdir: &str, vc: VideoConfig) {
     }
 }
 
+/// Calculates precision from true positive and false positive.
 pub fn precision(tp: usize, fp: usize) -> f64 {
     1.0 * (tp as f64) / ((tp + fp) as f64)
 }
 
+/// Calculates recall from true positive and false negative
 pub fn recall(tp: usize, fnn: usize) -> f64 {
     1.0 * (tp as f64) / ((tp + fnn) as f64)
 }
 
+/// Calculates f1 from precision and recallacc
 pub fn f1(precision: f64, recall: f64) -> f64 {
     2.0 * precision * recall / (precision + recall)
 }
