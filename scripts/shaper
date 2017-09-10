@@ -3,6 +3,7 @@
 set -e
 
 SINK=54.153.118.87
+SOURCES=(52.32.115.31)
 
 ## This script wraps Linux tc to provide easy traffic shaping control.
 ## To use this script, do the following:
@@ -38,10 +39,26 @@ EOF
 ## If the third argument is provided (it should also follow a `bw` spec), it's
 ## then used to shape another class label 1:11 (port 9999).
 function shaper_start() {
+    if [ $# -lt 2 ]; then
+        >&2 printf "Missing interface and bandwidth specification\n\n"
+        usage
+        return
+    fi
+
     tc qdisc add dev $1 root handle 1: htb
     tc class add dev $1 parent 1: classid 1:10 htb rate $2
     tc filter add dev $1 protocol ip parent 1: \
        prio 1 u32 match ip dst ${SINK} flowid 1:10
+
+    for i in "${!SOURCES[@]}"
+    do
+        src="${SOURCES[$i]}"
+        tc filter add dev $1 protocol ip parent 1: \
+           prio 1 u32 match ip dst ${src} flowid 1:10
+    done
+
+    tc qdisc add dev $1 parent 1:10 handle 10: netem delay \
+       200ms 5ms 25% distribution normal
 }
 
 ## Updates the shaper option on a specific interface.

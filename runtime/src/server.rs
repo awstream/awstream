@@ -176,7 +176,7 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
             let time_since_last_report = time_diff_in_ms(now, self.last_report_time);
             if time_since_last_report > 500.0 {
                 self.last_report_time = now;
-                info!("reporting latency spikes {}", self.min_latency.min());
+                trace!("reporting latency spikes {}", self.min_latency.min());
                 let report =
                     ReceiverReport::new(latency, self.goodput.rate(), self.throughput.rate());
 
