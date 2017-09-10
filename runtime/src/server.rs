@@ -94,12 +94,7 @@ fn handle_conn(socket: TcpStream, analytics: VideoAnalytics, handle: &Handle) ->
                 AsDatumType::LatencyProbe => {
                     let now = chrono::Utc::now();
                     let latency = time_diff_in_ms(now, as_datum.ts);
-                    reporter.update_min_latency(latency);
-                    trace!(
-                        "latency estimate: {}/{:.1}",
-                        latency,
-                        reporter.min_latency()
-                    );
+                    reporter.update_net_latency(latency);
                 }
                 _ => {}
             }
@@ -117,7 +112,8 @@ fn handle_conn(socket: TcpStream, analytics: VideoAnalytics, handle: &Handle) ->
 
 struct Reporter<T: Sink<SinkItem = AsDatum, SinkError = Error>> {
     last_report_time: DateTime<Utc>,
-    min_latency: StreamingStat,
+    net_latency: StreamingStat,
+    app_latency: StreamingStat,
     reporter: T,
 
     goodput: BwMonitor,
@@ -137,7 +133,8 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
     ) -> Self {
         Reporter {
             last_report_time: chrono::Utc::now(),
-            min_latency: StreamingStat::new(::std::f64::INFINITY, 10),
+            net_latency: StreamingStat::new(::std::f64::INFINITY, 10),
+            app_latency: StreamingStat::new(::std::f64::INFINITY, 10),
             reporter: reporter,
             goodput: goodput,
             throughput: throughput,
@@ -146,16 +143,16 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
         }
     }
 
-    pub fn update_min_latency(&mut self, latency: f64) {
-        self.min_latency.add(latency);
+    pub fn update_app_latency(&mut self, latency: f64) {
+        self.app_latency.add(latency);
+    }
+
+    pub fn update_net_latency(&mut self, latency: f64) {
+        self.net_latency.add(latency);
     }
 
     pub fn update_latency(&mut self, latency: f64) {
         self.latency.add(latency);
-    }
-
-    pub fn min_latency(&self) -> f64 {
-        self.min_latency.min()
     }
 
     /// report is called whenever we receive a new datum
@@ -164,6 +161,7 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
         let now = chrono::Utc::now();
         let latency = time_diff_in_ms(now, ts);
         self.update_latency(latency);
+        self.update_app_latency(latency);
         self.analytics.add(frame_num, level);
         trace!(
             "level: {}, latency: {:.1}, size: {}",
@@ -172,19 +170,28 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
             datum.len()
         );
 
-        if latency > 10.0 * self.min_latency.min() && latency > 10.0 {
+        if self.latency_too_much(latency) {
             let time_since_last_report = time_diff_in_ms(now, self.last_report_time);
             if time_since_last_report > 500.0 {
                 self.last_report_time = now;
-                trace!("reporting latency spikes {}", self.min_latency.min());
                 let report =
                     ReceiverReport::new(latency, self.goodput.rate(), self.throughput.rate());
-
                 let datum = AsDatum::ack(report);
                 self.reporter.start_send(datum)?;
                 self.reporter.poll_complete()?;
             }
         }
         Ok(())
+    }
+
+    #[inline]
+    fn latency_too_much(&self, current_latency: f64) -> bool {
+        if current_latency < 10.0 {
+            false
+        } else if current_latency < 10.0 * self.app_latency.min() {
+            false
+        } else {
+            true
+        }
     }
 }
