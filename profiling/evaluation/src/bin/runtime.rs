@@ -52,15 +52,15 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    // Split into 5 seconds chunks and evaluate accuracy
-    for (idx, chunk) in per_frame_stat.chunks(30 * 5).enumerate() {
+    // Split into per second chunks and evaluate accuracy
+    for chunk in per_frame_stat.chunks(30) {
         let true_positive = chunk.iter().map(|i| i.1.true_positive).sum::<usize>();
         let false_postive = chunk.iter().map(|i| i.1.false_positive).sum::<usize>();
         let false_negative = chunk.iter().map(|i| i.1.false_negative).sum::<usize>();
 
         let p = precision(true_positive, false_postive);
         let r = recall(true_positive, false_negative);
-        println!("{},{}", idx, f1(p, r));
+        println!("{}", f1(p, r));
     }
 }
 
