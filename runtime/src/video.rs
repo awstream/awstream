@@ -57,17 +57,18 @@ impl VideoSource {
         }
     }
 
-    pub fn next_frame(&mut self) -> usize {
+    pub fn next_frame(&mut self) -> (usize, usize) {
         let frame_size = self.map.get(&(self.config, self.frame)).expect(&format!(
             "Source file corrupted. Failed to find frame size for {}@{}",
             self.config,
             self.frame
         ));
+        let frame_num = self.frame;
         self.frame += 1;
         if self.frame >= self.num {
             self.frame = 1;
         }
-        *frame_size
+        (*frame_size, frame_num)
     }
 }
 
@@ -100,7 +101,7 @@ impl Adapt for VideoSource {
 }
 
 impl Experiment for VideoSource {
-    fn next_datum(&mut self) -> usize {
+    fn next_datum(&mut self) -> (usize, usize) {
         self.next_frame()
     }
 }

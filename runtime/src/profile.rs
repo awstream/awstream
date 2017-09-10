@@ -139,6 +139,11 @@ impl<C: Copy> Profile<C> {
             .config
     }
 
+    /// Returns n-th configuration.
+    pub fn n_th(&self, n: usize) -> C {
+        self.records[n].config
+    }
+
     /// Returns the last configuration (we will simply take the last).
     #[allow(dead_code)]
     fn last_config(&self) -> C {

@@ -19,6 +19,9 @@ pub struct Setting {
 
     /// Path to source (video).
     pub source_path: String,
+
+    /// Path to stat (per frame stat).
+    pub stat_path: String,
 }
 
 impl Setting {

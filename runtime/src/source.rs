@@ -142,7 +142,7 @@ impl TimerSource {
                         ticks = 0;
                     }
 
-                    let size = source.next_datum();
+                    let (size, frame_num) = source.next_datum();
                     if size == 0 {
                         return Ok(());
                     }
@@ -157,7 +157,7 @@ impl TimerSource {
                     }
 
                     let level = source.current_level();
-                    let data_to_send = AsDatum::new(level, vec![0; size]);
+                    let data_to_send = AsDatum::new(level, frame_num, vec![0; size]);
                     info!("add new, level: {}, size: {}", level, size);
                     counter_clone.fetch_add(data_to_send.net_len(), Ordering::SeqCst);
                     data_tx.unbounded_send(data_to_send).map(|_| ()).map_err(

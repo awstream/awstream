@@ -22,6 +22,7 @@ tokio-proto = "0.1"
 tokio-service = "0.1"
 tokio-timer = "0.1"
 toml = "0.4"
+evaluation = { path = "../profiling/evaluation" }
 
 [[bin]]
 name = "client"

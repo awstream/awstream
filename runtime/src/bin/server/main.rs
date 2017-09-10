@@ -27,5 +27,5 @@ pub fn main() {
     builder.init().unwrap();
 
     let setting = Setting::init("Setting.toml").unwrap();
-    server::server(setting.port);
+    server::server(setting);
 }

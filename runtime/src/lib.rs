@@ -16,6 +16,7 @@ extern crate chrono;
 extern crate csv;
 #[macro_use]
 extern crate error_chain;
+extern crate evaluation;
 #[macro_use]
 extern crate futures;
 #[macro_use]
@@ -58,8 +59,7 @@ mod source;
 mod interval;
 mod bw_monitor;
 mod video;
-// mod receiver;
-// mod analytics;
+mod analytics;
 // mod online;
 
 use byteorder::{BigEndian, ReadBytesExt};
@@ -108,8 +108,8 @@ pub trait Adapt {
 
 /// For experiment
 pub trait Experiment {
-    /// Return the size of next datum.
-    fn next_datum(&mut self) -> usize;
+    /// Return the size of next datum and its index.
+    fn next_datum(&mut self) -> (usize, usize);
 }
 
 #[derive(Debug)]
@@ -132,10 +132,10 @@ pub struct AsCodec {
 
 impl AsDatum {
     /// Creates a new `AsDatum` object for live data.
-    pub fn new(level: usize, data: Vec<u8>) -> AsDatum {
+    pub fn new(level: usize, frame_num: usize, data: Vec<u8>) -> AsDatum {
         let now = chrono::Utc::now();
         let mut d = AsDatum {
-            t: AsDatumType::Live(level),
+            t: AsDatumType::Live(level, frame_num),
             ts: now,
             mem: data,
             len: 0,
@@ -208,15 +208,14 @@ impl AsDatum {
 impl ::std::fmt::Display for AsDatum {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match self.t {
-            AsDatumType::Live(level) => {
-                write!(
-                    f,
-                    "level: {:?}, ts: {:?}, mem (with size {}), len: {}",
-                    level,
-                    self.ts,
-                    self.mem.len(),
-                    self.len
-                )
+            AsDatumType::Live(level, frame_num) => {
+                f.debug_struct("AsDatum::Live")
+                    .field("level", &level)
+                    .field("frame_num", &frame_num)
+                    .field("ts", &self.ts)
+                    .field("mem_length", &self.mem.len())
+                    .field("len", &self.len())
+                    .finish()
             }
             AsDatumType::Raw => write!(f, "raw data: {}", self.len),
             AsDatumType::Dummy => write!(f, "probe data: {}", self.len),
@@ -229,8 +228,8 @@ impl ::std::fmt::Display for AsDatum {
 /// Datum type.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AsDatumType {
-    /// Actual live data (meaningful), with level
-    Live(usize),
+    /// Actual live data (meaningful), with (level, frame_num)
+    Live(usize, usize),
 
     /// Raw data (used for online profiling).
     Raw,
@@ -363,7 +362,7 @@ mod tests {
     use super::*;
     #[test]
     fn encode_decode_works() {
-        let d = AsDatum::new(0, String::from("Hello").into_bytes());
+        let d = AsDatum::new(0, 0, String::from("Hello").into_bytes());
         let expected_len = d.net_len();
         let expected = d.clone();
         let mut buf = bytes::BytesMut::new();

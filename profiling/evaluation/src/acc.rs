@@ -37,6 +37,7 @@ pub struct FrameDetections {
     dets: Vec<Detection>,
 }
 
+/// Statistics
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Stat {
     /// True positive
