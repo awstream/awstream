@@ -1,3 +1,4 @@
+use super::errors::*;
 use super::evaluation::{self, FrameStat, f1, precision, recall};
 use super::profile::Profile;
 use super::video::{self, VideoConfig};
@@ -36,14 +37,15 @@ impl VideoAnalytics {
         VideoAnalytics { inner: Arc::new(Mutex::new(inner)) }
     }
 
-    pub fn add(&mut self, frame_num: usize, level: usize) {
-        let mut m = self.inner.lock().unwrap();
+    pub fn add(&mut self, frame_num: usize, level: usize) -> Result<()> {
+        let mut m = self.inner.lock()?;
         (*m).logs.push((frame_num, level));
+        Ok(())
     }
 
-    pub fn accuracy(&self) -> f64 {
-        let mut m = self.inner.lock().unwrap();
-        (*m).accuracy()
+    pub fn accuracy(&self) -> Result<f64> {
+        let mut m = self.inner.lock()?;
+        Ok((*m).accuracy())
     }
 }
 

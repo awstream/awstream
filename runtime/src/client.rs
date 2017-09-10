@@ -73,7 +73,8 @@ pub fn run(setting: Setting) -> Result<()> {
 
     let remote = FramedRead::new(tcp_read, AsCodec::default())
         .map(|as_datum| {
-            let report = ReceiverReport::from_mem(&as_datum.mem);
+            let errmsg = "failed to parse mem into report";
+            let report = ReceiverReport::from_mem(&as_datum.mem).expect(&errmsg);
             Signal::RemoteCongest(report.throughput, report.latency)
         })
         .map_err(|_| Error::from_kind(ErrorKind::RemotePeer));

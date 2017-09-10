@@ -61,18 +61,19 @@ fn handle_conn(socket: TcpStream, analytics: VideoAnalytics, handle: &Handle) ->
     let timer = tokio_timer::Timer::default();
     let (ticks, tick_stopper) = interval::new(timer, Duration::from_millis(1000));
 
+    let errmsg = "fail to update statistics";
+
     let estimate_throughput = ticks.for_each(move |_| {
         // in each tick, measure bandwidth
-        goodput.update(1000);
-        throughput.update(1000);
-        latency_mon.update();
-        let accuracy = analytics.accuracy();
+        goodput.update(1000).expect(&errmsg);
+        throughput.update(1000).expect(&errmsg);;
+        latency_mon.update().expect(&errmsg);;
         info!(
             "goodput: {} kbps, throughput: {} kbps, latency: {} ms, accuracy: {:.3}",
-            goodput.rate(),
-            throughput.rate(),
-                latency_mon.rate(),
-                accuracy,
+            goodput.rate().unwrap(),
+            throughput.rate().unwrap(),
+            latency_mon.rate().unwrap(),
+            analytics.accuracy().unwrap()
         );
         Ok(())
     });
@@ -83,11 +84,11 @@ fn handle_conn(socket: TcpStream, analytics: VideoAnalytics, handle: &Handle) ->
     let process_connection = transport_read
         .for_each(move |as_datum| {
             let size = as_datum.len() as usize;
-            reporter.throughput.add(size);
+            reporter.throughput.add(size).expect(&errmsg);;
             match as_datum.datum_type() {
                 AsDatumType::Live(level, frame_num) => {
                     let size = as_datum.len() as usize;
-                    reporter.goodput.add(size);
+                    reporter.goodput.add(size).expect(&errmsg);
                     reporter.report(level, frame_num, as_datum)?
                 }
                 AsDatumType::Dummy => {}
@@ -152,7 +153,9 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
     }
 
     pub fn update_latency(&mut self, latency: f64) {
-        self.latency.add(latency);
+        self.latency.add(latency).expect(
+            &"failed to update latency",
+        );
     }
 
     /// report is called whenever we receive a new datum
@@ -162,7 +165,7 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
         let latency = time_diff_in_ms(now, ts);
         self.update_latency(latency);
         self.update_app_latency(latency);
-        self.analytics.add(frame_num, level);
+        self.analytics.add(frame_num, level)?;
         trace!(
             "level: {}, latency: {:.1}, size: {}",
             level,
@@ -174,9 +177,12 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
             let time_since_last_report = time_diff_in_ms(now, self.last_report_time);
             if time_since_last_report > 500.0 {
                 self.last_report_time = now;
-                let report =
-                    ReceiverReport::new(latency, self.goodput.rate(), self.throughput.rate());
-                let datum = AsDatum::ack(report);
+                let report = ReceiverReport::new(
+                    latency,
+                    self.goodput.rate().unwrap(),
+                    self.throughput.rate().unwrap(),
+                );
+                let datum = AsDatum::ack(report)?;
                 self.reporter.start_send(datum)?;
                 self.reporter.poll_complete()?;
             }

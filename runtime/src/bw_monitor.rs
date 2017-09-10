@@ -1,3 +1,4 @@
+use errors::*;
 use std::sync::{Arc, Mutex};
 use std::vec::Vec;
 
@@ -21,19 +22,22 @@ impl BwMonitor {
         BwMonitor { inner: Arc::new(Mutex::new(inner)) }
     }
 
-    pub fn add(&mut self, sample: usize) {
-        let mut m = self.inner.lock().unwrap();
+    pub fn add(&mut self, sample: usize) -> Result<()> {
+        let mut m = self.inner.lock()?;
         (*m).sample += sample;
+        Ok(())
     }
 
-    pub fn rate(&self) -> f64 {
-        (*self.inner.lock().unwrap()).rate
+    pub fn rate(&self) -> Result<f64> {
+        let m = self.inner.lock()?;
+        Ok((*m).rate)
     }
 
-    pub fn update(&mut self, time_in_ms: usize) {
-        let mut m = self.inner.lock().unwrap();
+    pub fn update(&mut self, time_in_ms: usize) -> Result<()> {
+        let mut m = self.inner.lock()?;
         (*m).rate = ((*m).sample as f64) * 8.0 / (time_in_ms as f64);
         (*m).sample = 0;
+        Ok(())
     }
 }
 
@@ -57,18 +61,21 @@ impl LatencyMonitor {
         LatencyMonitor { inner: Arc::new(Mutex::new(inner)) }
     }
 
-    pub fn add(&mut self, sample: f64) {
-        let mut m = self.inner.lock().unwrap();
+    pub fn add(&mut self, sample: f64) -> Result<()> {
+        let mut m = self.inner.lock()?;
         (*m).sample.push(sample);
+        Ok(())
     }
 
-    pub fn rate(&self) -> f64 {
-        (*self.inner.lock().unwrap()).rate
+    pub fn rate(&self) -> Result<f64> {
+        let m = self.inner.lock()?;
+        Ok(m.rate)
     }
 
-    pub fn update(&mut self) {
-        let mut m = self.inner.lock().unwrap();
+    pub fn update(&mut self) -> Result<()> {
+        let mut m = self.inner.lock()?;
         (*m).rate = (*m).sample.iter().sum::<f64>() / (*m).sample.len() as f64;
         (*m).sample.clear();
+        Ok(())
     }
 }

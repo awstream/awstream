@@ -172,16 +172,17 @@ impl AsDatum {
     }
 
     /// Creates a new `AsDatum` object for acknowledgement.
-    pub fn ack(rr: ReceiverReport) -> AsDatum {
+    pub fn ack(rr: ReceiverReport) -> Result<AsDatum> {
         let now = chrono::Utc::now();
+        let mem = rr.to_mem()?;
         let mut d = AsDatum {
             t: AsDatumType::ReceiverCongest,
             ts: now,
-            mem: rr.to_mem(),
+            mem: mem,
             len: 0,
         };
         d.update_len();
-        d
+        Ok(d)
     }
 
     fn update_len(&mut self) {
@@ -264,13 +265,15 @@ impl ReceiverReport {
     }
 
     /// Decode from memory
-    pub fn from_mem(mem: &Vec<u8>) -> ReceiverReport {
-        bincode::deserialize(&mem[..]).unwrap()
+    pub fn from_mem(mem: &Vec<u8>) -> Result<ReceiverReport> {
+        let report = bincode::deserialize(&mem[..])?;
+        Ok(report)
     }
 
     /// Encode into memory
-    pub fn to_mem(&self) -> Vec<u8> {
-        bincode::serialize(&self, bincode::Infinite).unwrap()
+    pub fn to_mem(&self) -> Result<Vec<u8>> {
+        let mem = bincode::serialize(&self, bincode::Infinite)?;
+        Ok(mem)
     }
 }
 

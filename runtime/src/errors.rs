@@ -1,8 +1,5 @@
 //! Error types for AWStream.
 
-use futures::sync::mpsc::SendError;
-use std::any::Any;
-
 /// Creates the Error, ErrorKind, ResultExt, and Result types
 error_chain!{
     errors {
@@ -27,16 +24,21 @@ error_chain!{
         DecodeError {
             description("error in decoding the data")
         }
+        SyncPoisonError(t: String) {
+        }
     }
 
     foreign_links {
         Io(::std::io::Error);
         Timer(::tokio_timer::TimerError);
+        Bincode(::bincode::Error);
     }
 }
 
-impl<T: Any> From<SendError<T>> for Error {
-    fn from(_err: SendError<T>) -> Self {
-        Self::from_kind(ErrorKind::DataPlane)
+impl<T> From<::std::sync::PoisonError<T>> for Error {
+    fn from(err: ::std::sync::PoisonError<T>) -> Self {
+        use std::error::Error;
+
+        Self::from_kind(ErrorKind::SyncPoisonError(err.description().to_string()))
     }
 }

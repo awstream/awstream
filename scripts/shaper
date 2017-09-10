@@ -60,7 +60,7 @@ function shaper_start() {
            prio 1 u32 match ip dst ${src} flowid 1:10
     done
 
-    if [ -z ${LATENCY+x} ]; then
+    if [ ! -z ${LATENCY+x} ]; then
         tc qdisc add dev $1 parent 1:10 handle 10: netem delay \
            ${LATENCY} distribution normal
         echo "shaping latency as '$LATENCY'";

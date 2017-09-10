@@ -34,7 +34,7 @@ pub struct Socket {
 
 impl Socket {
     /// Send buffer size.
-    const INITIAL_CAPACITY: usize = 32 * 1_024;
+    const INITIAL_CAPACITY: usize = 8 * 1_024;
 
     /// Triggers `poll_complete` if buffered item exceeds the boundary.
     const BACKPRESSURE_BOUNDARY: usize = Socket::INITIAL_CAPACITY;
