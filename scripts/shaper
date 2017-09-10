@@ -25,6 +25,9 @@ Default shaping traffic with port 8888; configurable via env PORT
 ./shaper clear <interface>"
 ./shaper show  <interface>"
 
+To add latency shaping, simply set environment variable LATENCY.
+Example: LATENCY="100ms 10ms 25%"
+
 EOF
 }
 
@@ -57,8 +60,11 @@ function shaper_start() {
            prio 1 u32 match ip dst ${src} flowid 1:10
     done
 
-    tc qdisc add dev $1 parent 1:10 handle 10: netem delay \
-       200ms 5ms 25% distribution normal
+    if [ -z ${LATENCY+x} ]; then
+        tc qdisc add dev $1 parent 1:10 handle 10: netem delay \
+           ${LATENCY} distribution normal
+        echo "shaping latency as '$LATENCY'";
+    fi
 }
 
 ## Updates the shaper option on a specific interface.
