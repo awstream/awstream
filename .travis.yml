@@ -1,5 +1,8 @@
 language: rust
 
+git:
+  submodules: false
+
 rust:
   - stable
   - beta
