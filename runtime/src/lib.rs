@@ -45,27 +45,28 @@ macro_rules! try_nb {
     })
 }
 
-mod errors;
-mod profile;
-mod setting;
-pub use setting::Setting;
+// mod online;
 mod adaptation;
+mod analytics;
+mod bw_monitor;
 mod controller;
+mod errors;
+mod interval;
+mod profile;
+mod queue;
+mod setting;
+mod socket;
+mod source;
+mod utils;
+mod video;
 pub mod client;
 pub mod server;
-mod socket;
-mod utils;
-mod source;
-mod interval;
-mod bw_monitor;
-mod video;
-mod analytics;
-// mod online;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use bytes::{BufMut, BytesMut};
 use errors::*;
 use profile::SimpleProfile;
+pub use setting::Setting;
 use std::io::{self, Cursor};
 use std::mem;
 use tokio_io::codec::{Decoder, Encoder};

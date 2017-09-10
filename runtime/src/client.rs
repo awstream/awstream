@@ -2,18 +2,18 @@
 //! event loop (`tokio_core::Core`). The loop selects the next available event
 //! and reacts accordingly.
 
-use super::errors::*;
 use super::{Adapt, AdaptAction, AsCodec, ReceiverReport};
 use super::adaptation::{Action, Adaptation, Signal};
 use super::controller::Monitor;
+use super::errors::*;
 use super::profile::SimpleProfile;
 use super::setting::Setting;
 use super::socket::{FramedRead, Socket};
 use super::source::TimerSource;
 use super::video::VideoSource;
+use futures::{Future, Sink, Stream};
 
 use futures::sync::mpsc::UnboundedSender;
-use futures::{Future, Sink, Stream};
 use std::net::SocketAddr;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
@@ -60,7 +60,7 @@ pub fn run(setting: Setting) -> Result<()> {
     let (socket, out_bytes) = Socket::new(tcp_write);
 
     // 3. Forward all source data to socket
-    let s = src_data.map_err(|_| Error::from_kind(ErrorKind::SourceDataErr));
+    let s = src_data.map_err(|_| Error::from_kind(ErrorKind::SourceData));
     let socket_work = socket.send_all(s).map(|_| ()).map_err(|_| ());
     core.handle().spawn(socket_work);
 

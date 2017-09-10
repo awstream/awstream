@@ -1,6 +1,7 @@
-use super::{Adapt, AdaptAction, Experiment};
-use super::AsDatum;
+use super::{Adapt, AdaptAction, AsDatum, Experiment};
 use super::adaptation::Signal;
+use super::queue::ReceiverCtl;
+use super::queue::queue;
 use futures::Stream;
 use futures::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use std::sync::Arc;
@@ -10,7 +11,7 @@ use tokio_core::reactor::Handle;
 use tokio_timer;
 
 type SourceCtrl = (UnboundedSender<AdaptAction>, UnboundedReceiver<Signal>);
-type SourceData = UnboundedReceiver<AsDatum>;
+type SourceData = ReceiverCtl<AsDatum>;
 type SourceStat = Arc<AtomicUsize>;
 
 pub type Source = (SourceCtrl, SourceData, SourceStat);
@@ -115,7 +116,7 @@ impl TimerSource {
         let (adapt_tx, adapt_rx) = unbounded();
         let adapter = adapt_rx.map(|level| Incoming::Adapt(level));
 
-        let (data_tx, data_rx) = unbounded();
+        let (data_tx, data_rx) = queue();
         let counter = Arc::new(AtomicUsize::new(0));
         let counter_clone = counter.clone();
 
@@ -134,11 +135,9 @@ impl TimerSource {
                     if ticks == one_second_ticks {
                         let p = AsDatum::latency_probe();
                         counter_clone.fetch_add(p.net_len(), Ordering::SeqCst);
-                        data_tx
-                            .unbounded_send(p)
-                            .map(|_| ())
-                            .map_err(|_| ())
-                            .expect("failed to send probing latency packet");
+                        data_tx.send(p).map(|_| ()).map_err(|_| ()).expect(
+                            "failed to send probing latency packet",
+                        );
                         ticks = 0;
                     }
 
@@ -149,20 +148,16 @@ impl TimerSource {
 
                     if let Some(p) = prober.next() {
                         counter_clone.fetch_add(p.net_len(), Ordering::SeqCst);
-                        data_tx
-                            .unbounded_send(p)
-                            .map(|_| ())
-                            .map_err(|_| ())
-                            .expect("failed to send probing packet");
+                        data_tx.send(p).map(|_| ()).map_err(|_| ()).expect(
+                            "failed to send probing packet",
+                        );
                     }
 
                     let level = source.current_level();
                     let data_to_send = AsDatum::new(level, frame_num, vec![0; size]);
                     info!("add new, level: {}, size: {}", level, size);
                     counter_clone.fetch_add(data_to_send.net_len(), Ordering::SeqCst);
-                    data_tx.unbounded_send(data_to_send).map(|_| ()).map_err(
-                        |_| (),
-                    )
+                    data_tx.send(data_to_send).map(|_| ()).map_err(|_| ())
                 }
                 Incoming::Adapt(AdaptAction::ToRate(rate)) => {
                     prober.stop_probe();
