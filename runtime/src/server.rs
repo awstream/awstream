@@ -95,7 +95,7 @@ fn handle_conn(socket: TcpStream, analytics: VideoAnalytics, handle: &Handle) ->
                     let now = chrono::Utc::now();
                     let latency = time_diff_in_ms(now, as_datum.ts);
                     reporter.update_min_latency(latency);
-                    info!(
+                    trace!(
                         "latency estimate: {}/{:.1}",
                         latency,
                         reporter.min_latency()
@@ -165,7 +165,7 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
         let latency = time_diff_in_ms(now, ts);
         self.update_latency(latency);
         self.analytics.add(frame_num, level);
-        info!(
+        trace!(
             "level: {}, latency: {:.1}, size: {}",
             level,
             latency,
