@@ -11,7 +11,7 @@ use tokio_core::reactor::Handle;
 use tokio_timer;
 
 type SourceCtrl = (UnboundedSender<AdaptAction>, UnboundedReceiver<Signal>);
-type SourceData = ReceiverCtl<AsDatum>;
+type SourceData = ReceiverCtl;
 type SourceStat = Arc<AtomicUsize>;
 
 pub type Source = (SourceCtrl, SourceData, SourceStat);
