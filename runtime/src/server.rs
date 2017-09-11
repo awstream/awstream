@@ -75,7 +75,7 @@ fn handle_conn(
         throughput.update(1000).expect(&errmsg);;
         latency_mon.update().expect(&errmsg);;
         info!(
-            "client: {}, goodput: {} kbps, throughput: {} kbps, latency: {:.3} ms, accuracy: {:.4}",
+            "client {}\tgoodput {} kbps\tthroughput {} kbps\tlatency {:.3} ms\taccuracy {:.4}",
             addr,
             goodput.rate().unwrap(),
             throughput.rate().unwrap(),
