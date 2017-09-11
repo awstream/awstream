@@ -1,6 +1,6 @@
 server = "54.153.118.87"
 port = 8889
 
-profile_path = "../data/reference-data/darknet.tcp.csv"
-source_path = "../data/reference-data/darknet.source.csv"
-stat_path = "../data/reference-data/darknet.stat.csv"
+profile_path = "../data/reference-data/mot.tcp.csv"
+source_path = "../data/reference-data/mot.source.csv"
+stat_path = "../data/reference-data/mot.stat.csv"
