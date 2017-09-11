@@ -11,6 +11,7 @@ use errors::*;
 use futures::{Future, Sink, Stream};
 use interval;
 use std::io;
+use std::net::SocketAddr;
 use std::time::Duration;
 use tokio_core::net::{TcpListener, TcpStream};
 use tokio_core::reactor::{Core, Handle};
@@ -33,9 +34,9 @@ pub fn server(setting: Setting) {
     let listener = TcpListener::bind(&addr, &handle).unwrap();
 
     // Accept all incoming sockets
-    let server = listener.incoming().for_each(move |(socket, _addr)| {
+    let server = listener.incoming().for_each(move |(socket, addr)| {
         let analytics = VideoAnalytics::new(&setting.profile_path, &setting.stat_path);
-        handle_conn(socket, analytics, &handle)
+        handle_conn(socket, addr, analytics, &handle)
     });
 
     // Open listener
@@ -43,7 +44,12 @@ pub fn server(setting: Setting) {
 }
 
 /// The main server logic that handles a particular socket.
-fn handle_conn(socket: TcpStream, analytics: VideoAnalytics, handle: &Handle) -> io::Result<()> {
+fn handle_conn(
+    socket: TcpStream,
+    addr: SocketAddr,
+    analytics: VideoAnalytics,
+    handle: &Handle,
+) -> io::Result<()> {
     let transport = socket.framed(AsCodec::default());
     let (transport_write, transport_read) = transport.split();
 
@@ -69,7 +75,8 @@ fn handle_conn(socket: TcpStream, analytics: VideoAnalytics, handle: &Handle) ->
         throughput.update(1000).expect(&errmsg);;
         latency_mon.update().expect(&errmsg);;
         info!(
-            "goodput: {} kbps, throughput: {} kbps, latency: {} ms, accuracy: {:.3}",
+            "client: {}, goodput: {} kbps, throughput: {} kbps, latency: {:.3} ms, accuracy: {:.4}",
+            addr,
             goodput.rate().unwrap(),
             throughput.rate().unwrap(),
             latency_mon.rate().unwrap(),

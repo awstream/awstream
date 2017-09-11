@@ -10,10 +10,8 @@ pub fn main() {
     let format = |record: &log::LogRecord| {
         let t = chrono::Utc::now();
         format!(
-            "{} {}:{}: {}",
+            "{} {}",
             t.format("%Y-%m-%d %H:%M:%S%.3f").to_string(),
-            record.level(),
-            record.location().module_path(),
             record.args()
         )
     };
