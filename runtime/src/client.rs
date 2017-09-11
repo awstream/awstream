@@ -14,6 +14,7 @@ use super::video::VideoSource;
 use futures::{Future, Sink, Stream};
 
 use futures::sync::mpsc::UnboundedSender;
+use futures_cpupool::CpuPool;
 use std::net::SocketAddr;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
@@ -35,6 +36,8 @@ fn connect(server: &str, port: u16, core: &mut Core) -> Result<TcpStream> {
 
 /// Run client
 pub fn run(setting: Setting) -> Result<()> {
+    let pool = CpuPool::new_num_cpus();
+
     // Setting up the reactor core
     let mut core = Core::new().unwrap();
 
@@ -62,7 +65,9 @@ pub fn run(setting: Setting) -> Result<()> {
     // 3. Forward all source data to socket
     let s = src_data.map_err(|_| Error::from_kind(ErrorKind::SourceData));
     let socket_work = socket.send_all(s).map(|_| ()).map_err(|_| ());
-    core.handle().spawn(socket_work);
+
+    let data_plane = pool.spawn(socket_work);
+    core.handle().spawn(data_plane);
 
     //////////////////////////////////////////////////////////////////
     //
@@ -83,16 +88,17 @@ pub fn run(setting: Setting) -> Result<()> {
     let monitor = Monitor::new(src_stat, out_bytes).skip(1);
     let probing = src_rx.map_err(|_| Error::from_kind(ErrorKind::RemotePeer));
 
-    let work = monitor
+    let control_plane = monitor
         .select(probing)
         .select(remote)
-        .for_each(|signal| {
+        .for_each(move |signal| {
             core_adapt(signal, &mut adaptation, &mut profile, src_tx.clone());
             Ok(())
         })
         .map_err(|_| Error::from_kind(ErrorKind::ControlPlane));
 
-    core.run(work)?;
+    let control_plane = pool.spawn(control_plane);
+    core.run(control_plane)?;
 
     Ok(())
 }

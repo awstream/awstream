@@ -19,6 +19,7 @@ extern crate error_chain;
 extern crate evaluation;
 #[macro_use]
 extern crate futures;
+extern crate futures_cpupool;
 #[macro_use]
 extern crate log;
 extern crate serde;
