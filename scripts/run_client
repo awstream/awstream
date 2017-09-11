@@ -1,0 +1,43 @@
+#!/bin/bash
+# -*- mode: sh -*-
+
+declare -i client_pid
+declare -i timer_pid
+
+function stop() {
+    echo "stop all"
+    echo "killing client with pid" $client_pid
+    echo "killing timer with pid" $timer_pid
+    sudo kill -TERM $client_pid &>/dev/null
+    sudo kill -TERM $timer_pid &>/dev/null
+}
+
+function main() {
+    trap "stop" SIGHUP SIGINT SIGTERM
+    ##
+    ## Client
+    ##
+    pushd . > /dev/null
+    cd  ../runtime
+    cargo run --release --bin client &
+    client_pid=$!
+    popd > /dev/null
+
+    ##
+    ## Start timeout
+    ##
+    timeout_seconds=640
+    sleep $timeout_seconds && stop &
+    timer_pid=$!
+
+    ##
+    ## Traffic shaping
+    ##
+    sudo ./scheduled_shape eth0 \
+         25000kbit 200 \
+         7500kbit 180 \
+         5000kbit 60 \
+         25000kbit 200
+}
+
+main
