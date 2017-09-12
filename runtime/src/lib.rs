@@ -247,7 +247,7 @@ pub enum AsDatumType {
     ReceiverCongest,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 /// Statistics report from the receiver side.
 pub struct ReceiverReport {
     latency: f64,

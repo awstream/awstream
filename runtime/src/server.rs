@@ -50,6 +50,8 @@ fn handle_conn(
     analytics: VideoAnalytics,
     handle: &Handle,
 ) -> io::Result<()> {
+    info!("new connection from {}", addr);
+
     let transport = socket.framed(AsCodec::default());
     let (transport_write, transport_read) = transport.split();
 
@@ -180,7 +182,7 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
             datum.len()
         );
 
-        if self.latency_too_much(latency) {
+        if self.latency_is_high(latency) {
             let time_since_last_report = time_diff_in_ms(now, self.last_report_time);
             if time_since_last_report > 500.0 {
                 self.last_report_time = now;
@@ -189,6 +191,7 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
                     self.goodput.rate().unwrap(),
                     self.throughput.rate().unwrap(),
                 );
+                trace!("report {:?}", report);
                 let datum = AsDatum::ack(report)?;
                 self.reporter.start_send(datum)?;
                 self.reporter.poll_complete()?;
@@ -198,10 +201,10 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
     }
 
     #[inline]
-    fn latency_too_much(&self, current_latency: f64) -> bool {
+    fn latency_is_high(&self, current_latency: f64) -> bool {
         if current_latency < 10.0 {
             false
-        } else if current_latency < 10.0 * self.app_latency.min() {
+        } else if current_latency < 10.0 * self.net_latency.min() {
             false
         } else {
             true
