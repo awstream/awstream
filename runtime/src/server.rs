@@ -205,8 +205,13 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
         // Build a latency model: expected = min_net + size / rate + noise
         let net_delay = self.net_latency.min();
         let tx_delay = datum.len() as f64 / self.goodput.rate().unwrap();
-        let noise = 10 as f64 + net_delay;
-        let expected = net_delay + tx_delay + noise;
+        let ideal = net_delay + tx_delay;
+
+        let expected = match ideal as u64 {
+            0...100 => 3.0 * ideal,
+            100...500 => 2.0 * ideal,
+            _ => 1.5 * ideal,
+        };
 
         current_latency > expected
     }
