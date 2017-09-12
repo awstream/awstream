@@ -208,7 +208,7 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
         let ideal = net_delay + tx_delay;
 
         let expected = match ideal as u64 {
-            0...100 => 3.0 * ideal,
+            0...100 => 4.0 * ideal,
             100...500 => 2.0 * ideal,
             _ => 1.5 * ideal,
         };
