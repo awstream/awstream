@@ -182,7 +182,7 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
             datum.len()
         );
 
-        if self.latency_is_high(latency) {
+        if self.latency_is_high(latency, &datum) {
             let time_since_last_report = time_diff_in_ms(now, self.last_report_time);
             if time_since_last_report > 500.0 {
                 self.last_report_time = now;
@@ -201,13 +201,13 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
     }
 
     #[inline]
-    fn latency_is_high(&self, current_latency: f64) -> bool {
-        if current_latency < 10.0 {
-            false
-        } else if current_latency < 10.0 * self.net_latency.min() {
-            false
-        } else {
-            true
-        }
+    fn latency_is_high(&self, current_latency: f64, datum: &AsDatum) -> bool {
+        // Build a latency model: expected = min_net + size / rate + noise
+        let net_delay = self.net_latency.min();
+        let tx_delay = datum.len() as f64 / self.goodput.rate().unwrap();
+        let noise = 10 as f64 + net_delay;
+        let expected = net_delay + tx_delay + noise;
+
+        current_latency > expected
     }
 }
