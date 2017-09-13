@@ -35,7 +35,7 @@ function main() {
     trap "clean $iface" SIGHUP SIGINT SIGTERM
 
     ## has_started will control if we are using `start` or `update`
-    has_started=false
+    has_started=true
 
     ## iterate all the arguments, (bw, time) pair
     while test $# -gt 1

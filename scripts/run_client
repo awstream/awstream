@@ -13,13 +13,15 @@ function stop() {
 }
 
 function main() {
+    sudo LATENCY="100ms 10ms" ./shaper start eth0 100000kbit
+
     trap "stop" SIGHUP SIGINT SIGTERM
     ##
     ## Client
     ##
     pushd . > /dev/null
     cd  ../runtime
-    cargo run --release --bin client &
+    cargo run --release --bin client 2> >(tee stderr.log >&2) &
     client_pid=$!
     popd > /dev/null
 
@@ -34,10 +36,10 @@ function main() {
     ## Traffic shaping
     ##
     sudo ./scheduled_shape eth0 \
-         25000kbit 200 \
+         100000kbit 40 \
          7500kbit 180 \
          5000kbit 60 \
-         25000kbit 200
+         100000kbit 200
 }
 
 main
