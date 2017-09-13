@@ -55,7 +55,7 @@ impl Default for Adaptation {
 
 impl Adaptation {
     /// Only start probing if we are steady enough (that is, enough Q_E).
-    const STEADY_ENOUGH: usize = 5;
+    const STEADY_ENOUGH: usize = 3;
 
     pub fn transit(&mut self, signal: Signal, max_config: bool) -> Action {
         info!(

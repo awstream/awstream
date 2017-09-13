@@ -34,7 +34,7 @@ pub struct Monitor {
 }
 
 /// QUEUE_EMPTY_REQUIRED * MONITOR_INTERVAL => 1 seconds for each Q_E
-const QUEUE_EMPTY_REQUIRED: usize = 5;
+const QUEUE_EMPTY_REQUIRED: usize = 20;
 
 const MONITOR_INTERVAL: u64 = 100;
 
