@@ -21,7 +21,7 @@ function main() {
     ##
     pushd . > /dev/null
     cd  ../runtime
-    cargo run --release --bin client 2> >(tee stderr.log >&2) &
+    RUST_LOG=awstream=info cargo run --release --bin client 2> stderr.log &
     client_pid=$!
     popd > /dev/null
 
