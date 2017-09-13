@@ -42,6 +42,7 @@ enum State {
 pub struct Adaptation {
     state: State,
     steady_count: usize,
+    startup_congest: usize,
 }
 
 impl Default for Adaptation {
@@ -49,11 +50,15 @@ impl Default for Adaptation {
         Adaptation {
             state: State::Startup,
             steady_count: 0,
+            startup_congest: 0,
         }
     }
 }
 
 impl Adaptation {
+    /// Allow (transit) congestion during the startup phase as TCP is adjusting
+    const STARTUP_CONGEST_ENOUGH: usize = 3;
+
     /// Only start probing if we are steady enough (that is, enough Q_E).
     const STEADY_ENOUGH: usize = 3;
 
@@ -77,8 +82,15 @@ impl Adaptation {
             (State::Startup, Signal::QueueCongest(rate, _latency), _) |
             (State::Startup, Signal::RemoteCongest(rate, _latency), _) => {
                 // transition 3
-                self.state = State::Degrade;
-                Action::AdjustConfig(rate)
+                // transition 7
+                if self.startup_congest > Adaptation::STARTUP_CONGEST_ENOUGH {
+                    self.startup_congest = 0;
+                    self.state = State::Degrade;
+                    Action::AdjustConfig(rate)
+                } else {
+                    self.startup_congest += 1;
+                    Action::NoOp
+                }
             }
             (State::Degrade, Signal::QueueCongest(rate, _latency), _) |
             (State::Degrade, Signal::RemoteCongest(rate, _latency), _) => {
