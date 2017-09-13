@@ -5,7 +5,7 @@ declare -i client_pid
 declare -i timer_pid
 
 function main() {
-    sudo LATENCY="250ms 25ms" ./shaper start eth0 100000kbit
+    sudo LATENCY="200ms 20ms" ./shaper start eth0 100000kbit
 
     trap "stop" SIGHUP SIGINT SIGTERM
     ##
@@ -20,7 +20,7 @@ function main() {
     ##
     ## Start timeout
     ##
-    timeout_seconds=640
+    timeout_seconds=260
     sleep $timeout_seconds && stop &
     timer_pid=$!
 
@@ -28,10 +28,9 @@ function main() {
     ## Traffic shaping
     ##
     sudo ./scheduled_shape eth0 \
-         100000kbit 200 \
+         100000kbit 40 \
          7500kbit 180 \
-         5000kbit 60 \
-         100000kbit 200
+         100000kbit 40
 }
 
 function stop() {
