@@ -44,7 +44,7 @@ struct ProbeTracker {
     pub delta: usize,
 }
 
-const NUM_PROBE_REQUIRED: usize = 5;
+const NUM_PROBE_REQUIRED: usize = 3;
 
 impl ProbeTracker {
     fn new(tick_period: u64) -> ProbeTracker {
