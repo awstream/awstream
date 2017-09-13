@@ -36,7 +36,7 @@ function main() {
     ## Traffic shaping
     ##
     sudo ./scheduled_shape eth0 \
-         100000kbit 40 \
+         100000kbit 200 \
          7500kbit 180 \
          5000kbit 60 \
          100000kbit 200
