@@ -3,7 +3,11 @@
 set -e
 
 SINK=54.153.118.87
-SOURCES=(52.32.115.31)
+SOURCES=(
+    52.32.115.31
+    13.58.116.243
+    52.23.155.130
+)
 
 ## This script wraps Linux tc to provide easy traffic shaping control.
 ## To use this script, do the following:

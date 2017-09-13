@@ -209,10 +209,9 @@ impl<T: Sink<SinkItem = AsDatum, SinkError = Error>> Reporter<T> {
 
         let expected = match ideal as u64 {
             0...100 => 10.0 * ideal,
-            100...200 => 5.0 * ideal,
-            200...300 => 4.0 * ideal,
-            300...500 => 3.0 * ideal,
-            _ => 1.5 * ideal,
+            100...200 => 8.0 * ideal,
+            200...300 => 6.0 * ideal,
+            _ => 5.0 * ideal,
         };
 
         current_latency > expected
