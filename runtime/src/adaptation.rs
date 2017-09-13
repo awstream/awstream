@@ -72,10 +72,12 @@ impl Adaptation {
         let action = match (self.state, signal, max_config) {
             (State::Startup, Signal::QueueEmpty, false) => {
                 // transition 1
+                self.startup_congest = 0;
                 Action::AdvanceConfig
             }
             (State::Startup, Signal::QueueEmpty, true) => {
                 // transition 2, queue is empty and config at max
+                self.startup_congest = 0;
                 self.state = State::Steady;
                 Action::NoOp
             }
