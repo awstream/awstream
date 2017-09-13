@@ -13,7 +13,7 @@ function stop() {
 }
 
 function main() {
-    sudo LATENCY="100ms 10ms" ./shaper start eth0 100000kbit
+    sudo LATENCY="500ms 50ms" ./shaper start eth0 100000kbit
 
     trap "stop" SIGHUP SIGINT SIGTERM
     ##
