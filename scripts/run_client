@@ -4,16 +4,8 @@
 declare -i client_pid
 declare -i timer_pid
 
-function stop() {
-    echo "stop all"
-    echo "killing client with pid" $client_pid
-    echo "killing timer with pid" $timer_pid
-    sudo kill -TERM $client_pid &>/dev/null
-    sudo kill -TERM $timer_pid &>/dev/null
-}
-
 function main() {
-    sudo LATENCY="500ms 50ms" ./shaper start eth0 100000kbit
+    sudo LATENCY="250ms 25ms" ./shaper start eth0 100000kbit
 
     trap "stop" SIGHUP SIGINT SIGTERM
     ##
@@ -40,6 +32,14 @@ function main() {
          7500kbit 180 \
          5000kbit 60 \
          100000kbit 200
+}
+
+function stop() {
+    echo "stop all"
+    echo "killing client with pid" $client_pid
+    echo "killing timer with pid" $timer_pid
+    sudo kill -TERM $client_pid &>/dev/null
+    sudo kill -TERM $timer_pid &>/dev/null
 }
 
 main
