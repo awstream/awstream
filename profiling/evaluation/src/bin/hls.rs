@@ -40,6 +40,11 @@ struct Opt {
     #[structopt(short = "p", long = "profile")]
     #[structopt(help = "The path to the profile")]
     profile_path: String,
+
+    /// The limit of frames to process
+    #[structopt(short = "l", long = "limit")]
+    #[structopt(help = "Number of frames to process")]
+    limit: usize,
 }
 
 fn main() {
@@ -60,7 +65,7 @@ fn main() {
             // `second * 30 : (second + 1) * 30`
             ((second * 30)..((second + 1) * 30))
                 .map(|frame_num| {
-                    let frame = frame_num % 1800;
+                    let frame = frame_num % opt.limit;
                     let frame_stat = frame_stats.iter().find(|i| {
                         i.frame_num == frame && i.config == config
                     });
