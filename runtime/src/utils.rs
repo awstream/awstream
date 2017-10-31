@@ -1,7 +1,5 @@
 //! Utility structures and functions.
 
-use average::{MeanWithError, Quantile};
-
 pub struct ExponentialSmooth {
     val: f64,
     alpha: f64,
@@ -55,24 +53,5 @@ impl StreamingStat {
               .iter()
               .min_by(|a, b| a.partial_cmp(b).unwrap())
               .unwrap())
-    }
-
-    pub fn _sum(&self) -> f64 {
-        trace!("for sum, consumed {:?}", self.buffer);
-        self.buffer.iter().sum()
-    }
-
-    pub fn _mean(&self) -> (f64, f64) {
-        trace!("for mean, consumed {:?}", self.buffer);
-        let mut m = MeanWithError::default();
-        self.buffer.iter().map(|&i| m.add(i)).count();
-        (m.mean(), m.error())
-    }
-
-    pub fn _p99(&self) -> f64 {
-        trace!("for p99, consumed {:?}", self.buffer);
-        let mut q = Quantile::new(0.99);
-        self.buffer.iter().map(|&i| q.add(i)).count();
-        q.quantile()
     }
 }

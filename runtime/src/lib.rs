@@ -8,7 +8,6 @@
 #![deny(missing_docs)]
 
 extern crate toml;
-extern crate average;
 extern crate bincode;
 extern crate byteorder;
 extern crate bytes;

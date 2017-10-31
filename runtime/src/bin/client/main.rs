@@ -13,7 +13,7 @@ extern crate chrono;
 extern crate log;
 
 use awstream::*;
-use std::{env, str};
+use std::env;
 
 pub fn main() {
     let format = |record: &log::LogRecord| {

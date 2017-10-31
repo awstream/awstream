@@ -4,7 +4,6 @@ version = "0.1.0"
 authors = ["Ben Zhang <benzh@cs.berkeley.edu>"]
 
 [dependencies]
-average = "0.6.2"
 bincode = "0.8"
 byteorder = "1"
 bytes = "0.4"
