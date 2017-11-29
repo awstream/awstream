@@ -4,23 +4,25 @@ cache: cargo
 git:
   submodules: false
 
-os:
-  - linux
-  - osx
-
-rust:
-  - stable
-  - beta
-  - nightly
-
 matrix:
+  include:
+    - os: linux
+      rust: stable
+    - os: linux
+      rust: nightly
+    - os: osx
+      rust: stable
+      osx_image: xcode9.1
+    - os: osx
+      rust: nightly
+      osx_image: xcode9.1
   allow_failures:
     - rust: nightly
 
 sudo: false
 
 before_script:
-  - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
+  - sudo pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
   - cd runtime
 
 script:
