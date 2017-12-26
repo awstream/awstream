@@ -1,10 +1,10 @@
 extern crate awstream;
-extern crate env_logger;
 extern crate chrono;
+extern crate env_logger;
 extern crate log;
 
 use awstream::*;
-use std::{env, str};
+use std::env;
 
 pub fn main() {
     let format = |record: &log::LogRecord| {
