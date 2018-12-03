@@ -1,6 +1,6 @@
 AWStream: Adaptive Wide-Area Streaming Analytics
 ---
 
-[![Build Status](https://travis-ci.com/nebgnahz/AWStream.svg?token=FtzQss73KSBwcHhSsrGQ&branch=master)](https://travis-ci.com/nebgnahz/AWStream)
+[![Build Status](https://travis-ci.com/awstream/awstream.svg?branch=master)](https://travis-ci.com/awstream/awstream)
 
-[Documentation](https://nebgnahz.github.io/AWStream/)
+[Documentation](https://awstream.github.io/awstream/)
