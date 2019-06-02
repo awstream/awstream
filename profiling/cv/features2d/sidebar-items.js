@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["MSER","Maximally stable extremal region extractor."],["MSERBuilder","Builder that provides defaults for MSER"]]});

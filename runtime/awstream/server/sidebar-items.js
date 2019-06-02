@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["server","Run the server. The server listens for new connections, parses input, and prints performance statistics (latency, accuracy, etc)."]]});
