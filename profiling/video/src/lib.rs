@@ -11,7 +11,7 @@
 //!
 //! Illustrated in a diagram as below:
 //!
-//! ```
+//! ```text
 //!           Interface 1                                   Interface 2
 //!            (tx, rx)
 //! schedule_recv => frame_loader => gstreamer => x264_loader => APP
